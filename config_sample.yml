@@ -1,0 +1,5 @@
+TEXTRA:
+  NAME: sample
+  KEY: keysamplekeysamplekeysamplekeysamplekeysample
+  SECRET: secretsamplesecretsamplesecretsamplesecretsample
+  URL: 'https://mt-auto-minhon-mlt.ucri.jgn-x.jp/api/mt/generalNT_en_ja/'
