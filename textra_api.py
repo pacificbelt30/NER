@@ -125,7 +125,7 @@ class Textra_connection:
         print(load['resultset']['request']['text'])
         print(load['resultset']['result']['text'])
         # return load
-        return load['resultset']['result']['text']
+        return load['resultset']['result']['text'].replace(' ','')
 
     def insert(self):
         for i in range(self.pe.page_count):
