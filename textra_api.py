@@ -13,27 +13,43 @@ from xml.etree.ElementTree import *
 from paper_extract import PaperExtract
 from yml_load import config_load
 
+priority = ['GOOGLE','TEXTRA']
 class Textra_connection:
-    def __init__(self,path) -> None:
+    def __init__(self,path,priority='GOOGLE') -> None:
         conf = config_load('./config.yml')
+        self.priority = priority
+        if 'PRIORITY' in conf:
+            self.priority = conf['PRIORITY']
         if 'TEXTRA' in conf:
-            self.NAME = conf['TEXTRA']['NAME']
-            self.KEY = conf['TEXTRA']['KEY']
-            self.SECRET = conf['TEXTRA']['SECRET']
-            self.URL = conf['TEXTRA']['URL']
+            self.NNAME = conf['TEXTRA']['NAME']
+            self.NKEY = conf['TEXTRA']['KEY']
+            self.NSECRET = conf['TEXTRA']['SECRET']
+            self.NURL = conf['TEXTRA']['URL']
+        if 'GOOGLE' in conf:
+            self.GURL = conf['GOOGLE']['URL']
         if 'FONT' in conf:
             self.font = conf['FONT']
         self.pe = PaperExtract(path=path,font=self.font)
 
-        self.consumer = OAuth1(self.KEY , self.SECRET)
+        self.consumer = OAuth1(self.NKEY , self.NSECRET)
         TEXT = ''
         self.params = {
-            'key': self.KEY,
-            'name': self.NAME,
+            'key': self.NKEY,
+            'name': self.NNAME,
             'type': 'json',
             'text': TEXT,
         }    # その他のパラメータについては、各APIのリクエストパラメータに従って設定してください。
 
+    def get_translation_service_func(self):
+        all = {
+            'GOOGLE': self._post_block_google,
+            'TEXTRA': self._post_block_nict,
+        }
+        return all
+
+    def _post_block(self,txt,sleeptime=0.0):
+        return self.get_translation_service_func()[self.priority](txt,sleeptime)
+    
     def get_pdf_info(self):
         self.pe.extract_textinfo()
         self.pe.fill_all_blocks()
@@ -46,7 +62,8 @@ class Textra_connection:
                 print(i)
                 try:
                     load = self._post_block(txt)
-                    page_array[i].append(load['resultset']['result']['text'])
+                    # page_array[i].append(load['resultset']['result']['text'])
+                    page_array[i].append(load)
 
                 except Exception as e:
                     print('=== Error ===')
@@ -56,7 +73,8 @@ class Textra_connection:
                     try:
                         print('RE-POST:')
                         load = self._post_block(txt)
-                        page_array[i].append(load['resultset']['result']['text'])
+                        # page_array[i].append(load['resultset']['result']['text'])
+                        page_array[i].append(load)
                     except Exception as ree:
                         print('=== Error ===')
                         print('Re:type:' + str(type(ree)))
@@ -66,20 +84,48 @@ class Textra_connection:
                     # 再送したい
         self.page_array = page_array
 
-    def _post_block(self,txt,sleeptime=3.0) -> dict:
+    def _post_block_google(self,txt,sleeptime=3.0):
+        res = ""
+        time.sleep(sleeptime)
+        # if (form == "google"):
+        if True:
+            params = {
+                'client': 'gtx',
+                'sl': 'en',
+                'tl': 'ja',
+                'dt': 't',
+                'q': txt,
+            }
+            print("req>>" , txt)
+            res = req.get(self.GURL, params=params)
+            res.encoding = 'utf-8'
+            load = res.json()
+            # print("j")
+            # print(type(j))
+            txt = ''
+            for k in range(len(load[0])):
+                # print(j[0][k][0])
+                txt += load[0][k][0]
+            print(txt.replace('\n','').replace(' ',''))
+            return txt.replace(' ','')
+
+        return "cant translete"
+
+    def _post_block_nict(self,txt,sleeptime=3.0) -> dict:
         self.params['text'] = txt
         print(self.params)
         time.sleep(sleeptime)
-        res = req.post(self.URL , data=self.params , auth=self.consumer)
+        res = req.post(self.NURL , data=self.params , auth=self.consumer)
         res.encoding = 'utf-8'
-        print("[res]")
-        print(res)
-        print('result')
+        # print("[res]")
+        # print(res)
+        # print('result')
         dump = json.dumps(res.text)
         load = json.loads(json.loads(dump))
         print(load['resultset']['request']['text'])
         print(load['resultset']['result']['text'])
-        return load
+        # return load
+        return load['resultset']['result']['text']
 
     def insert(self):
         for i in range(self.pe.page_count):
