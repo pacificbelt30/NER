@@ -131,3 +131,4 @@ config.yml
 Pipfile.lock
 pdf/
 test_script/
+pdfstore/

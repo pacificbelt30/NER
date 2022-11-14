@@ -9,6 +9,10 @@ requests = "*"
 requests-oauthlib = "*"
 pyyaml = "*"
 nltk = "*"
+fastapi = "*"
+aiofiles = "*"
+python-multipart = "*"
+uvicorn = "*"
 
 [dev-packages]
 pynvim = "*"
