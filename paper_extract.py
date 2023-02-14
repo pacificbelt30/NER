@@ -67,10 +67,10 @@ class PaperExtract:
 
                 fontsize_array = []
                 full = ''
-                bbox = []
+                # bbox = []
                 for line in block['lines']:
                     span_txt = ''
-                    bbox.append(line['spans'][0]['bbox'][0])
+                    # bbox.append(line['spans'][0]['bbox'][0])
                     for txt in line['spans']:
                         span_txt += txt['text']
                         fontsize_array.append(txt['size'])
@@ -190,7 +190,7 @@ class PaperExtract:
         return True
     
     def calc_fontsize(self,pagerect,rect,text,font,fontsize):
-        last_fontsize = fontsize*2
+        last_fontsize = fontsize*1.5
         while True:
             last_fontsize -= 0.5
             tw = fitz.TextWriter(pagerect)
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     print(pe.get_page_text(0))
     print(pe.get_page_text_array(0))
     # print(pe.get_all_text())
-    # pe.fill_all_blocks()
+    pe.fill_all_blocks()
     pe.visualize_blocks()
 
     array=[]
@@ -244,4 +244,4 @@ if __name__ == "__main__":
         array.append(len(pe.get_page_text_array(i)))
     print(array)
     # pe.insert_txt(11,txt)
-    pe.save()
+    # pe.save()

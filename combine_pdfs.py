@@ -1,4 +1,5 @@
 import fitz
+import os
 
 class PDFInfo:
     def __init__(self,path):
@@ -26,5 +27,12 @@ class CombinePDF:
         new_pdf.save(self.output_path)
 
 if __name__ == "__main__":
-    cpdf = CombinePDF('','','')
-    cpdf.combine(insert_first_page=True)
+    pdf = "./pdf/cpu-api.pdf"
+    file_ext = os.path.basename(pdf).split('.')
+    dir = os.path.dirname(pdf)
+    # print(os.path.join(dir,f"{file_ext[0]}_new.{file_ext[1]}"))
+    trans_file = os.path.join(dir,f"{file_ext[0]}_new.{file_ext[1]}")
+    target_file = os.path.join(dir,f"{file_ext[0]}_all.{file_ext[1]}")
+    cpdf = CombinePDF(pdf,trans_file,target_file)
+    cpdf.combine(insert_first_page=False)
+

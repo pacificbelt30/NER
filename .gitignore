@@ -132,3 +132,4 @@ Pipfile.lock
 pdf/
 test_script/
 pdfstore/
+txt/
