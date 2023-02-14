@@ -139,6 +139,6 @@ if __name__ == "__main__":
         filename = sys.argv[1]
     tc = Textra_connection(filename)
     tc.get_pdf_info()
-    tc.post_page()
+    # tc.post_page()
     tc.insert()
 

@@ -149,11 +149,8 @@ class PaperExtract:
             # print(page.get_text("text"))
             for block in self.pages_info[page_num]:
                 annot = page.add_redact_annot(block['bbox'])
-                page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
-                # shape=page.new_shape()
-                # shape.draw_rect(block['bbox'])
-                # shape.finish(color=(1,1,1),fill=(1,1,1))
-                # shape.commit()
+                annot.update()
+            page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
 
     def visualize_blocks(self):
         temp = self._open()
@@ -222,7 +219,8 @@ class PaperExtract:
         return True
 
     def save(self):
-        self.new_doc.ez_save(self.output_path)
+        # self.new_doc.ez_save(self.output_path)
+        self.new_doc.save(self.output_path,garbage=4,clean=False,deflate=False)
 
 if __name__ == "__main__":
     filename = './pdf/sec22arp.pdf'
@@ -244,4 +242,4 @@ if __name__ == "__main__":
         array.append(len(pe.get_page_text_array(i)))
     print(array)
     # pe.insert_txt(11,txt)
-    # pe.save()
+    pe.save()
