@@ -21,13 +21,17 @@ class CombinePDF:
         if insert_first_page:
             # new_pdf.insert_page(0)
             new_pdf.insert_pdf(self.doc1.document,from_page=0,to_page=0)
-        for p in range(self.doc1.page):
-            new_pdf.insert_pdf(self.doc1.document,from_page=p,to_page=p)
-            new_pdf.insert_pdf(self.doc2.document,from_page=p,to_page=p)
-        new_pdf.save(self.output_path)
+        for p in range(self.doc1.page-1):
+            new_pdf.insert_pdf(self.doc1.document,from_page=p,to_page=p,final=0)
+            new_pdf.insert_pdf(self.doc2.document,from_page=p,to_page=p,final=0)
+        new_pdf.insert_pdf(self.doc1.document,from_page=self.doc1.page-1,to_page=self.doc1.page-1,final=1)
+        new_pdf.insert_pdf(self.doc2.document,from_page=self.doc1.page-1,to_page=self.doc1.page-1,final=1)
+        # new_pdf.save(self.output_path)
+        # new_pdf.save(self.output_path,garbage=4,clean=False,deflate=True)
+        new_pdf.save(self.output_path,garbage=0,clean=False,deflate=False)
 
 if __name__ == "__main__":
-    pdf = "./pdf/cpu-api.pdf"
+    pdf = "./pdf/backdoorsok.pdf"
     file_ext = os.path.basename(pdf).split('.')
     dir = os.path.dirname(pdf)
     # print(os.path.join(dir,f"{file_ext[0]}_new.{file_ext[1]}"))
