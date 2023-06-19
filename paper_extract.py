@@ -17,7 +17,7 @@ class PaperExtract:
         # self.font = fitz.Font("PlemolJP",f"{home}/.local/share/fonts/PlemolJP_v1.0.0/PlemolJP/PlemolJP-Regular.ttf")
         font = os.path.expanduser(font)
         print(font)
-        self.font = fitz.Font("ipa",font)
+        self.font = fitz.Font("ipa",font,language="ja")
 
     @property
     def page_count(self) -> int:
@@ -214,8 +214,9 @@ class PaperExtract:
             fontsize = self.calc_fontsize(page.rect,self.pages_info[page_num][i]['bbox'],itxt,self.font,self.pages_info[page_num][i]['fontsize'])
             print(fontsize)
             # tw.fill_textbox(self.pages_info[page_num][i]['bbox'],itxt,font=self.font,fontsize=self.pages_info[page_num][i]['fontsize']-0.4)
+            # tw = fitz.TextWriter(self.pages_info[page_num][i]['bbox'])
             tw.fill_textbox(self.pages_info[page_num][i]['bbox'],itxt,font=self.font,fontsize=fontsize)
-            tw.write_text(page)
+        tw.write_text(page,color=(0,0,0),opacity=0.9)
         return True
 
     def save(self):
