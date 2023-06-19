@@ -1,5 +1,6 @@
 import fitz
 import os
+import sys
 
 class PDFInfo:
     def __init__(self,path):
@@ -32,6 +33,8 @@ class CombinePDF:
 
 if __name__ == "__main__":
     pdf = "./pdf/backdoorsok.pdf"
+    if len(sys.argv) >= 2:
+        pdf = sys.argv[1]
     file_ext = os.path.basename(pdf).split('.')
     dir = os.path.dirname(pdf)
     # print(os.path.join(dir,f"{file_ext[0]}_new.{file_ext[1]}"))
