@@ -1,7 +1,7 @@
 import sys
 import os
 import json
-from textra_api import TextraConnection
+from ner import Textra_connection
 
 class Block():
     def __init__(self,filename):
