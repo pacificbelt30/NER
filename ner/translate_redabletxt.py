@@ -1,7 +1,7 @@
 import sys
 import os
 import json
-from textra_api import Textra_connection
+from textra_api import TextraConnection
 
 class Block():
     def __init__(self,filename):
@@ -13,7 +13,7 @@ class Block():
             import traceback
             traceback.print_exc()
             self.txt = ''
-        self.translate_api = Textra_connection(filename)
+        self.translate_api = TextraConnection(filename)
         self.split_txt = self.split_array(self.txt)
 
     def split_array(self,txt):
