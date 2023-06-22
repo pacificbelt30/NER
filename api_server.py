@@ -5,7 +5,7 @@ import aiofiles
 import os
 import uvicorn
 import asyncio
-from textra_api import Textra_connection
+from ner import Textra_connection
 
 app = FastAPI()
 

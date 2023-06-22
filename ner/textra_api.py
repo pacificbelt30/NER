@@ -10,8 +10,8 @@ import json
 import time
 from requests_oauthlib import OAuth1
 from xml.etree.ElementTree import *
-from paper_extract import PaperExtract
-from yml_load import config_load
+from .yml_load import config_load
+from .paper_extract import PaperExtract
 
 priority = ['GOOGLE','TEXTRA']
 class Textra_connection:

@@ -2,8 +2,8 @@ import fitz
 import os
 import sys
 import re
-from yml_load import config_load
 from nltk.tokenize import sent_tokenize
+from .yml_load import config_load
 
 fitz.TOOLS.set_aa_level(5)
 
