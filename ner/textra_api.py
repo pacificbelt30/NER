@@ -29,6 +29,8 @@ class TextraConnection:
             self.GURL = conf['GOOGLE']['URL']
         if 'FONT' in conf:
             self.font = conf['FONT']
+        else:
+            self.font = ''
         self.pe = PaperExtract(path=path,font=self.font)
 
         self.consumer = OAuth1(self.NKEY , self.NSECRET)
