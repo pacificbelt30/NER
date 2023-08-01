@@ -10,11 +10,11 @@ import json
 import time
 from requests_oauthlib import OAuth1
 from xml.etree.ElementTree import *
-from paper_extract import PaperExtract
-from yml_load import config_load
+from .yml_load import config_load
+from .paper_extract import PaperExtract
 
 priority = ['GOOGLE','TEXTRA']
-class Textra_connection:
+class TextraConnection:
     def __init__(self,path,priority='GOOGLE') -> None:
         conf = config_load('./config.yml')
         self.priority = priority
@@ -29,6 +29,8 @@ class Textra_connection:
             self.GURL = conf['GOOGLE']['URL']
         if 'FONT' in conf:
             self.font = conf['FONT']
+        else:
+            self.font = ''
         self.pe = PaperExtract(path=path,font=self.font)
 
         self.consumer = OAuth1(self.NKEY , self.NSECRET)
@@ -137,7 +139,7 @@ if __name__ == "__main__":
     filename = './pdf/survey_watermark.pdf'
     if len(sys.argv) >= 2:
         filename = sys.argv[1]
-    tc = Textra_connection(filename)
+    tc = TextraConnection(filename)
     tc.get_pdf_info()
     tc.post_page()
     tc.insert()

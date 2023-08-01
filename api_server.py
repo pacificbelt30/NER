@@ -5,7 +5,7 @@ import aiofiles
 import os
 import uvicorn
 import asyncio
-from textra_api import Textra_connection
+from ner import TextraConnection
 
 app = FastAPI()
 
@@ -22,7 +22,7 @@ base = 'pdfstore/'
 transfile_identifier = '_new'
 
 def translate(filename):
-    tc = Textra_connection(filename)
+    tc = TextraConnection(filename)
     tc.get_pdf_info()
     tc.post_page()
     tc.insert()

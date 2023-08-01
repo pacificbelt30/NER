@@ -2,8 +2,8 @@ import fitz
 import os
 import sys
 import re
-from yml_load import config_load
 from nltk.tokenize import sent_tokenize
+from .yml_load import config_load
 
 fitz.TOOLS.set_aa_level(5)
 
@@ -13,11 +13,11 @@ class PaperExtract:
         self.blocks = []
         self.doc = self._open()
         self.new_doc = self._open()
-        home = os.path.expanduser('~')
-        # self.font = fitz.Font("PlemolJP",f"{home}/.local/share/fonts/PlemolJP_v1.0.0/PlemolJP/PlemolJP-Regular.ttf")
-        font = os.path.expanduser(font)
-        print(font)
-        self.font = fitz.Font("ipa",font,language="ja")
+
+        # use Built-in japanese font if font == ''
+        font = os.path.expanduser(font) if font != '' else None
+        self.font = fitz.Font(fontname="japan", fontfile=font, language="ja")
+        print(self.font)
 
     @property
     def page_count(self) -> int:
