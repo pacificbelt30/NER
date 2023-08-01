@@ -1,6 +1,13 @@
 # NER
 NER is not Enough Readable.
 
+
+- [REQUIREMENTS](#requirements)
+- [INSTALL dependent python packages](#install-dependent-python-packages)
+- [INSTALL nltk dataset/model](#install-nltk-dataset/model)
+- [USAGE](#usage)
+  - [List of COMMAND](#list-of-command)
+
 ## REQUIREMENTS
 - python
 - pipenv
