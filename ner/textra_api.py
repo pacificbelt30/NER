@@ -52,6 +52,13 @@ class TextraConnection:
     def _post_block(self,txt,sleeptime=0.0):
         return self.get_translation_service_func()[self.priority](txt,sleeptime)
     
+    def print_pdf_info(self):
+        count = 0
+        for i in range(self.pe.page_count):
+            count += len(self.pe.get_page_text_array(i))
+        print('Num of Blocks = Total requests:', count)
+        return count
+
     def get_pdf_info(self):
         self.pe.extract_textinfo()
         self.pe.fill_all_blocks()
@@ -98,35 +105,37 @@ class TextraConnection:
                 'dt': 't',
                 'q': txt,
             }
-            print("req>>" , txt)
+            if self.DEBUG: print("req>>" , txt)
             res = req.get(self.GURL, params=params)
             res.encoding = 'utf-8'
             load = res.json()
-            # print("j")
-            # print(type(j))
             txt = ''
             for k in range(len(load[0])):
-                # print(j[0][k][0])
                 txt += load[0][k][0]
-            print(txt.replace('\n','').replace(' ',''))
+            # print(txt.replace('\n','').replace(' ',''))
             return txt.replace(' ','')
 
         return "cant translete"
 
     def _post_block_nict(self,txt,sleeptime=3.0) -> dict:
         self.params['text'] = txt
-        print(self.params)
+        if self.DEBUG: print(self.params)
         time.sleep(sleeptime)
         res = req.post(self.NURL , data=self.params , auth=self.consumer)
         res.encoding = 'utf-8'
-        # print("[res]")
-        # print(res)
         # print('result')
         dump = json.dumps(res.text)
         load = json.loads(json.loads(dump))
-        print(load['resultset']['request']['text'])
-        print(load['resultset']['result']['text'])
-        # return load
+
+        # NICT 上限に引っかかる場合（2023/11/02現在，n=750）
+        if load['resultset']['code'] != 200:
+            print(load['resultset']['code'], load['resultset']['message'])
+            return ''
+
+        if self.DEBUG: print(load['resultset']['request']['text'])
+        if self.DEBUG: print(load['resultset']['result']['text'])
+        print(load['resultset']['request']['text'][0:20], '... -> ', load['resultset']['result']['text'][0:20], '...')
+
         return load['resultset']['result']['text'].replace(' ','')
 
     def insert(self):
