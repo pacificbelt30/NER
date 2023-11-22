@@ -9,6 +9,7 @@ fitz.TOOLS.set_aa_level(5)
 
 class PaperExtract:
     def __init__(self,path='',font='') -> None:
+        self.DEBUG = False
         self.path = path
         self.blocks = []
         self.doc = self._open()
@@ -81,15 +82,15 @@ class PaperExtract:
                 threshold = 0.5 # アルファベットの占有率が閾値に満たない場合に訳さないことにする
                 filt_txt = re.sub(r"[^a-zA-Z]","",full) # アルファベット以外の文字列を消す
                 if filt_txt == "":
+                    if self.DEBUG: print('This block is not sentenses.',full)
                     continue
-                    print('This block is not sentenses.',full)
                 elif len(filt_txt)/len(full) <= 0.6:
                     # print(len(filt_txt),len(full))
                     # print(filt_txt,full)
-                    print('This block is not sentenses.',full)
+                    if self.DEBUG: print('This block is not sentenses.',full)
                     continue
                 elif len(filt_txt)<=40:
-                    print('This block is too short.',full)
+                    if self.DEBUG: print('This block is too short.',full)
                     continue
 
                 # 新しいブロックとして追加追加

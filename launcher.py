@@ -16,13 +16,18 @@ def help():
     print(helptxt)
 
 def translate():
+    tc = pdf_info()
+    tc.post_page()
+    tc.insert()
+
+def pdf_info():
     filename = 'source.pdf'
     if len(sys.argv) >= 3:
         filename = sys.argv[2]
     tc = TextraConnection(filename)
     tc.get_pdf_info()
-    tc.post_page()
-    tc.insert()
+    tc.print_pdf_info()
+    return tc
 
 def combine():
     pdf = 'source.pdf'
@@ -45,6 +50,8 @@ def main():
             translate()
         case 'combine':
             combine()
+        case 'info':
+            pdf_info()
         case _:
             help()
             exit(0)

@@ -16,6 +16,7 @@ NER is not Enough Readable.
 
 ## INSTALL dependent python packages
 ```
+pyenv install 3.11
 pipenv install
 ```
 
@@ -51,5 +52,12 @@ TEXTRA:
   URL: 'https://mt-auto-minhon-mlt.ucri.jgn-x.jp/api/mt/generalNT_en_ja/'
 FONT: '~/example.ttf'
 ```
+
+### Config
+You can use two translation services, [みんなの自動翻訳＠TexTra](https://mt-auto-minhon-mlt.ucri.jgn-x.jp) and [Google](https://translate.google.co.jp/) Translate.(DeepL is not supported)
+If you use みんなの自動翻訳＠TexTra, you can choose from several endpoints.
+For English-Japanese translation, the following two options are available:
+- scienceNT: https://mt-auto-minhon-mlt.ucri.jgn-x.jp/api/mt/science_en_ja/
+- generalNT: https://mt-auto-minhon-mlt.ucri.jgn-x.jp/api/mt/generalNT_en_ja/
   
 The meaning of each setting will be added soon.
