@@ -18,6 +18,7 @@ class TextraConnection:
     def __init__(self,path,priority='GOOGLE') -> None:
         conf = config_load('./config.yml')
         self.priority = priority
+        self.DEBUG = True
         if 'PRIORITY' in conf:
             self.priority = conf['PRIORITY']
         if 'TEXTRA' in conf:
@@ -49,7 +50,7 @@ class TextraConnection:
         }
         return all
 
-    def _post_block(self,txt,sleeptime=0.0):
+    def _post_block(self,txt,sleeptime=5.0):
         return self.get_translation_service_func()[self.priority](txt,sleeptime)
     
     def print_pdf_info(self):
@@ -128,9 +129,12 @@ class TextraConnection:
         load = json.loads(json.loads(dump))
 
         # NICT 上限に引っかかる場合（2023/11/02現在，n=750）
+        """
         if load['resultset']['code'] != 200:
+            print('Bad status:', load['resultset']['code'])
             print(load['resultset']['code'], load['resultset']['message'])
             return ''
+        """
 
         if self.DEBUG: print(load['resultset']['request']['text'])
         if self.DEBUG: print(load['resultset']['result']['text'])
