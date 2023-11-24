@@ -5,7 +5,7 @@ print(sys.path)
 from ner import PaperExtract
 from ner import config_load
 
-filename = './pdf/test5.pdf'
+filename = './pdf/Asurveyofdeepneuralnetworkwatermarkingtechniques_2021.pdf'
 conf = config_load('./config.yml')
 if len(sys.argv) >= 2:
     filename = sys.argv[1]
@@ -23,3 +23,8 @@ array=[]
 for i in range(pe.page_count):
     array.append(len(pe.get_page_text_array(i)))
 print(array)
+with open("test_page_jpn.txt","r") as f:
+    txt = f.read()
+print(txt)
+pe.insert_txt(0,txt)
+pe.save()
