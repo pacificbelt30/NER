@@ -131,9 +131,11 @@ class TextraConnection:
         # NICT 上限に引っかかる場合（2023/11/02現在，n=750）
         """
         if load['resultset']['code'] != 200:
+            print('Bad status:', load['resultset']['code'])
             print(load['resultset']['code'], load['resultset']['message'])
             return ''
         """
+
         if self.DEBUG: print(load['resultset']['request']['text'])
         if self.DEBUG: print(load['resultset']['result']['text'])
         print(load['resultset']['request']['text'][0:20], '... -> ', load['resultset']['result']['text'][0:20], '...')

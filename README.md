@@ -16,6 +16,7 @@ NER is not Enough Readable.
 
 ## INSTALL dependent python packages
 ```
+pyenv install 3.11
 pipenv install
 ```
 
