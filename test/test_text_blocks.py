@@ -211,9 +211,11 @@ def test_pdf_preserves_code_and_places_literal_links_in_translated_flow(tmp_path
         assert page.get_text('rawdict', clip=fitz.Rect(35, 200, 500, 250)) == before_code
         assert 'translate_document' in page.get_text()
         links = page.get_links()
-        assert len(links) == 1
-        assert links[0]['uri'] == 'https://example.org/translation/local-models?lang=en'
-        assert 'https://' in page.get_textbox(links[0]['from'])
+        assert links
+        assert all(link['uri'] == 'https://example.org/translation/local-models?lang=en' for link in links)
+        linked_text = ''.join(page.get_textbox(link['from']) for link in sorted(
+            links, key=lambda link: (link['from'].y0, link['from'].x0)))
+        assert 'https://example.org/translation/local-models?lang=en' in ''.join(linked_text.split())
 
 
 def test_protected_output_error_leaves_original_and_existing_output_untouched(tmp_path, recorded):

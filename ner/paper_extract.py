@@ -14,6 +14,7 @@ from .text_blocks import BlockTranslation, LiteralRange, TranslationBlock, prepa
 from .translation_policy import translation_decision
 from .block_layout import MIN_FONT_SIZE, PreparedPage, prepare_rich
 from .pdf_tables import separate_table_cells
+from .layout_space import PageLayoutSpace
 
 
 SEPARATOR = '\n------------------------------\n'
@@ -93,6 +94,7 @@ class PaperExtract:
 
     def extract_textinfo(self):
         pages = []
+        self.table_regions = []
         self.has_selectable_text = False
         self.selection_decisions = []
         for page_num, page in enumerate(self.doc):
@@ -101,6 +103,8 @@ class PaperExtract:
             # rather than every span inside a paragraph rectangle.
             source = page.get_text('rawdict', flags=fitz.TEXTFLAGS_TEXT)['blocks']
             source = separate_table_cells(page, source)
+            self.table_regions.append([block['table_cell']['bbox'] for block in source
+                                       if block.get('table_cell')])
             sizes = [span['size'] for block in source if block['type'] == 0
                      for line in block['lines'] for span in line['spans']]
             body_size = median(sizes) if sizes else 12
@@ -166,7 +170,7 @@ class PaperExtract:
                             alignment = 'center'
                         elif right <= max(4, font_size / 2) and left > right + 4:
                             alignment = 'right'
-                    elif role == 'heading':
+                    elif role == 'heading' and tuple(line_metadata[0]['dir']) == (1, 0):
                         page_bounds = page.rect * page.derotation_matrix
                         if abs((bbox.x0 + bbox.x1) / 2 - (page_bounds.x0 + page_bounds.x1) / 2) <= 2:
                             alignment = 'center'
@@ -335,6 +339,7 @@ class PaperExtract:
         if not blocks:
             return None
         page = self.new_doc[page_num]
+        space = PageLayoutSpace(page, blocks, self.table_regions[page_num])
         rich = []
         if results is not None and len(results) != len(blocks):
             raise PDFError(f'Page {page_num + 1}: structured translation block count does not match the PDF.')
@@ -345,7 +350,9 @@ class PaperExtract:
             if result is None:
                 protected = prepare_block(TranslationBlock(block['id'], text))
                 result = BlockTranslation(block['id'], text, protected.text, protected.spans, 0)
-            rich.append(prepare_rich(page, block, result, self.font_path))
+            plan = prepare_rich(page, block, result, self.font_path, space=space)
+            rich.append(plan)
+            space.reserve(plan)
         return PreparedPage(None, rich)
 
     def insert_txt(self, page_num, text):

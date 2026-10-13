@@ -15,15 +15,15 @@
   "extraction": [
     {
       "engine": "PyMuPDF",
-      "text_extraction_median_ms": 9.860636666417122,
+      "text_extraction_median_ms": 9.691812098026276,
       "runs_ms": [
-        9.519258514046669,
-        9.373223409056664,
-        9.45558212697506,
-        10.228285565972328,
-        10.423475876450539,
-        10.937342420220375,
-        9.860636666417122
+        9.830629453063011,
+        9.932613000273705,
+        9.691812098026276,
+        9.60947573184967,
+        9.917939081788063,
+        9.62049886584282,
+        9.598588570952415
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -38,7 +38,7 @@
       "anchor_left_x_error_pt": 0.0,
       "uri_links_extracted": 2,
       "table_cells_correct": true,
-      "table_ms": 12.346513569355011,
+      "table_ms": 12.525087222456932,
       "table": [
         [
           "Engine",
@@ -52,15 +52,15 @@
     },
     {
       "engine": "pdfplumber",
-      "text_extraction_median_ms": 71.13423570990562,
+      "text_extraction_median_ms": 73.19235615432262,
       "runs_ms": [
-        74.21682961285114,
-        90.16344137489796,
-        68.91831755638123,
-        69.57765109837055,
-        70.01109048724174,
-        71.65911793708801,
-        71.13423570990562
+        75.91922767460346,
+        95.37000767886639,
+        72.3592359572649,
+        71.73028774559498,
+        73.19235615432262,
+        72.33289629220963,
+        73.5526755452156
       ],
       "text_probes_passed": 9,
       "text_probes_total": 10,
@@ -75,7 +75,7 @@
       "anchor_left_x_error_pt": 0.0,
       "uri_links_extracted": 2,
       "table_cells_correct": true,
-      "table_ms": 26.061255484819412,
+      "table_ms": 26.72378346323967,
       "table": [
         [
           "Engine",
@@ -89,15 +89,15 @@
     },
     {
       "engine": "pdfminer.six",
-      "text_extraction_median_ms": 47.10639640688896,
+      "text_extraction_median_ms": 47.05839976668358,
       "runs_ms": [
-        45.69198563694954,
-        46.79974354803562,
-        47.16374725103378,
-        46.63218930363655,
-        47.10639640688896,
-        50.15994422137737,
-        49.0727573633194
+        47.01971635222435,
+        47.05839976668358,
+        47.182729467749596,
+        45.87462916970253,
+        46.873291954398155,
+        48.3427494764328,
+        47.45611920952797
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -117,15 +117,15 @@
     },
     {
       "engine": "pypdf",
-      "text_extraction_median_ms": 10.252339765429497,
+      "text_extraction_median_ms": 10.68713515996933,
       "runs_ms": [
-        12.246247380971909,
-        10.583484545350075,
-        10.239051654934883,
-        10.197171941399574,
-        10.328978300094604,
-        10.171987116336823,
-        10.252339765429497
+        12.459538877010345,
+        10.755416005849838,
+        10.825768113136292,
+        10.68713515996933,
+        10.657159611582756,
+        10.466475039720535,
+        10.430367663502693
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -145,15 +145,15 @@
     },
     {
       "engine": "pypdfium2",
-      "text_extraction_median_ms": 5.553228780627251,
+      "text_extraction_median_ms": 5.59084489941597,
       "runs_ms": [
-        5.77675923705101,
-        5.553228780627251,
-        5.561605095863342,
-        5.546018481254578,
-        5.4880306124687195,
-        5.492685362696648,
-        5.592186003923416
+        5.7402849197387695,
+        5.609255284070969,
+        5.59084489941597,
+        5.583539605140686,
+        5.55277056992054,
+        5.543610081076622,
+        5.704255774617195
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -175,7 +175,7 @@
   "copying": [
     {
       "engine": "PyMuPDF",
-      "elapsed_ms": 99.36756640672684,
+      "elapsed_ms": 103.07275503873825,
       "cases": [
         {
           "case": "mixed",
@@ -242,7 +242,7 @@
     },
     {
       "engine": "pypdf",
-      "elapsed_ms": 107.55939222872257,
+      "elapsed_ms": 104.31382060050964,
       "cases": [
         {
           "case": "mixed",
@@ -309,7 +309,7 @@
     },
     {
       "engine": "pypdfium2",
-      "elapsed_ms": 86.0840491950512,
+      "elapsed_ms": 100.08700378239155,
       "cases": [
         {
           "case": "mixed",
@@ -387,241 +387,275 @@
             "japanese_text_extractable": true,
             "unremoved_original_paragraph_pages": 0,
             "pdfium_changed_channel_percent": [
-              8.393884015594542,
-              3.5506213450292394
+              7.605750487329435,
+              3.1764741715399607
             ],
-            "minimum_font_size": 8.835200309753418,
-            "font_floor_violating_blocks": 0,
-            "mixed_layout": {
-              "url_bytes_present": false,
-              "inline_code_bytes_present": true,
-              "code_lines_present": [
-                true,
-                true,
-                true
-              ],
-              "protected_characters_same_coordinates": {
-                "code_block": true,
-                "inline_code": false,
-                "wrapped_url": false
+            "block_placements": [
+              {
+                "id": "p1-b1-u1",
+                "page": 1,
+                "role": "heading",
+                "source_rect": [
+                  40.0,
+                  20.459999084472656,
+                  216.0439910888672,
+                  50.75400161743164
+                ],
+                "placed_rect": [
+                  40.0,
+                  20.459999084472656,
+                  216.0439910888672,
+                  50.75400161743164
+                ],
+                "source_font_size": 22.0,
+                "placed_font_size": 22.0,
+                "expanded": false
               },
-              "links_count": 5,
-              "link_uris": [
-                "https://docs.example.org/translation/local-models?lang=en",
-                "https://docs.example.org/translation/local-models?lang=en",
-                "https://docs.example.org/translation/local-models?lang=en",
-                "https://docs.example.org/translation/local-models?lang=en",
-                "https://docs.example.org/translation/local-models?lang=en"
-              ],
-              "all_links_overlap_visible_text": true,
-              "background_pixel_before": [
-                224,
-                239,
-                255
-              ],
-              "background_pixel_after": [
-                224,
-                239,
-                255
-              ],
-              "background_preserved": true,
-              "rotated_line_directions": [
-                [
-                  1.0,
-                  0.0
+              {
+                "id": "p1-b2-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  380.0,
+                  75.0000228881836,
+                  672.77587890625,
+                  144.6617889404297
                 ],
-                [
-                  1.0,
-                  0.0
+                "placed_rect": [
+                  380.0,
+                  75.0000228881836,
+                  672.77587890625,
+                  144.6617889404297
                 ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ],
-                [
-                  1.0,
-                  0.0
-                ]
-              ],
-              "column_horizontal_bounds_respected": {
-                "right_column": true,
-                "left_column": true
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
               },
-              "short_heading_translated": true,
-              "flow_inline_code_bytes_present": true,
-              "styled_heading_colored": false,
-              "styled_heading_center_x": 267.26000213623047,
-              "short_list_line_count": 3,
-              "short_list_same_line_structure": false,
-              "minimum_font_size": 8.835200309753418,
-              "styled_heading_spans": [
-                {
-                  "size": 26.0,
-                  "flags": 0,
-                  "bidi": 0,
-                  "char_flags": 16,
-                  "font": "Droid Sans Fallback Regular",
-                  "color": 0,
-                  "alpha": 230,
-                  "ascender": 1.0420000553131104,
-                  "descender": -0.26499998569488525,
-                  "text": "文書翻訳のレイアウト制御",
-                  "origin": [
-                    111.25999450683594,
-                    62.1171875
-                  ],
-                  "bbox": [
-                    111.25999450683594,
-                    35.025184631347656,
-                    423.260009765625,
-                    69.00718688964844
-                  ]
-                }
-              ],
-              "url_characters_present_ignoring_wrap": true,
-              "uri_targets_unchanged": true
-            },
-            "original_table_cells_correct": 4,
-            "original_table_cells_total": 4
-          },
-          "elapsed_ms": 608.7775398045778,
-          "bytes": 1780125
-        },
-        {
-          "case": "columns",
-          "status": "written",
-          "metrics": {
-            "page_boxes_preserved": true,
-            "japanese_text_extractable": true,
-            "unremoved_original_paragraph_pages": 0,
-            "pdfium_changed_channel_percent": [
-              3.197733918128655
+              {
+                "id": "p1-b3-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  75.0000228881836,
+                  332.77593994140625,
+                  144.6617889404297
+                ],
+                "placed_rect": [
+                  40.0,
+                  75.0000228881836,
+                  332.77593994140625,
+                  144.6617889404297
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              },
+              {
+                "id": "p1-b4-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  239.25,
+                  354.0398864746094,
+                  280.989990234375
+                ],
+                "placed_rect": [
+                  40.0,
+                  239.25,
+                  354.0398864746094,
+                  280.989990234375
+                ],
+                "source_font_size": 10.0,
+                "placed_font_size": 10.0,
+                "expanded": false
+              },
+              {
+                "id": "p1-b6-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  409.25,
+                  432.409912109375,
+                  423.1700134277344
+                ],
+                "placed_rect": [
+                  40.0,
+                  409.25,
+                  432.409912109375,
+                  459.1700134277344
+                ],
+                "source_font_size": 10.0,
+                "placed_font_size": 10.0,
+                "expanded": true
+              },
+              {
+                "id": "p1-b7-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  464.25,
+                  284.00994873046875,
+                  505.469970703125
+                ],
+                "placed_rect": [
+                  40.0,
+                  464.25,
+                  284.00994873046875,
+                  505.469970703125
+                ],
+                "source_font_size": 10.0,
+                "placed_font_size": 10.0,
+                "expanded": false
+              },
+              {
+                "id": "p1-b8-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  50.0,
+                  565.0,
+                  666.2598266601562,
+                  599.212646484375
+                ],
+                "placed_rect": [
+                  50.0,
+                  565.0,
+                  666.2598266601562,
+                  599.212646484375
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              },
+              {
+                "id": "p2-b1-u1",
+                "page": 2,
+                "role": "heading",
+                "source_rect": [
+                  106.05999755859375,
+                  35.000022888183594,
+                  613.9398193359375,
+                  62.54002380371094
+                ],
+                "placed_rect": [
+                  106.05999755859375,
+                  35.000022888183594,
+                  613.9398193359375,
+                  62.54002380371094
+                ],
+                "source_font_size": 20.0,
+                "placed_font_size": 20.0,
+                "expanded": false
+              },
+              {
+                "id": "p2-b2-u1",
+                "page": 2,
+                "role": "list",
+                "source_rect": [
+                  40.0,
+                  127.0999984741211,
+                  158.0439910888672,
+                  143.58799743652344
+                ],
+                "placed_rect": [
+                  40.0,
+                  127.0999984741211,
+                  158.0439910888672,
+                  143.58799743652344
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 11.670901104119672,
+                "expanded": false
+              },
+              {
+                "id": "p2-b2-u2",
+                "page": 2,
+                "role": "list",
+                "source_rect": [
+                  40.0,
+                  143.58798217773438,
+                  192.7479705810547,
+                  160.0759735107422
+                ],
+                "placed_rect": [
+                  40.0,
+                  143.58798217773438,
+                  192.7479705810547,
+                  160.0759735107422
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              },
+              {
+                "id": "p2-b2-u3",
+                "page": 2,
+                "role": "list",
+                "source_rect": [
+                  40.0,
+                  160.07595825195312,
+                  202.0719757080078,
+                  176.56394958496094
+                ],
+                "placed_rect": [
+                  40.0,
+                  160.07595825195312,
+                  202.0719757080078,
+                  176.56394958496094
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              },
+              {
+                "id": "p2-b7-u1",
+                "page": 2,
+                "role": "paragraph",
+                "source_rect": [
+                  639.25,
+                  372.10009765625,
+                  652.989990234375,
+                  660.0
+                ],
+                "placed_rect": [
+                  639.25,
+                  372.10009765625,
+                  652.989990234375,
+                  660.0
+                ],
+                "source_font_size": 10.0,
+                "placed_font_size": 10.0,
+                "expanded": false
+              },
+              {
+                "id": "p2-b8-u1",
+                "page": 2,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  381.38800048828125,
+                  527.6968383789062,
+                  413.416015625
+                ],
+                "placed_rect": [
+                  40.0,
+                  381.38800048828125,
+                  527.6968383789062,
+                  413.416015625
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              }
             ],
-            "minimum_font_size": 12.0,
-            "font_floor_violating_blocks": 0
-          },
-          "elapsed_ms": 264.24041017889977,
-          "bytes": 1703869
-        },
-        {
-          "case": "graphics",
-          "status": "written",
-          "metrics": {
-            "page_boxes_preserved": true,
-            "japanese_text_extractable": true,
-            "unremoved_original_paragraph_pages": 0,
-            "pdfium_changed_channel_percent": [
-              2.114339668615984
-            ],
-            "minimum_font_size": 7.5,
-            "font_floor_violating_blocks": 0,
-            "image_pixels_exact": true,
-            "vector_pixels_exact": true
-          },
-          "elapsed_ms": 276.28665417432785,
-          "bytes": 1706486
-        },
-        {
-          "case": "dense",
-          "status": "written",
-          "metrics": {
-            "page_boxes_preserved": true,
-            "japanese_text_extractable": true,
-            "unremoved_original_paragraph_pages": 0,
-            "pdfium_changed_channel_percent": [
-              0.5712719298245614
-            ],
-            "minimum_font_size": 1.5,
-            "font_floor_violating_blocks": 1
-          },
-          "elapsed_ms": 458.4373738616705,
-          "bytes": 1703654
-        },
-        {
-          "case": "rotated-page",
-          "status": "written",
-          "metrics": {
-            "page_boxes_preserved": true,
-            "japanese_text_extractable": true,
-            "unremoved_original_paragraph_pages": 0,
-            "pdfium_changed_channel_percent": [
-              1.2914839181286548
-            ],
-            "minimum_font_size": 8.5,
-            "font_floor_violating_blocks": 0
-          },
-          "elapsed_ms": 243.29916760325432,
-          "bytes": 1703729
-        }
-      ]
-    },
-    {
-      "engine": "PyMuPDF HTML experiment",
-      "cases": [
-        {
-          "case": "mixed",
-          "status": "written",
-          "metrics": {
-            "page_boxes_preserved": true,
-            "japanese_text_extractable": true,
-            "unremoved_original_paragraph_pages": 0,
-            "pdfium_changed_channel_percent": [
-              8.180494639376217,
-              3.413194444444444
-            ],
-            "minimum_font_size": 8.835200309753418,
+            "expanded_blocks": 1,
+            "source_size_blocks": 12,
+            "minimum_font_size": 10.0,
+            "font_size_floor_policy": 1.0,
             "font_floor_violating_blocks": 0,
             "mixed_layout": {
               "url_bytes_present": false,
@@ -672,7 +706,355 @@
               "styled_heading_center_x": 359.9999084472656,
               "short_list_line_count": 3,
               "short_list_same_line_structure": false,
-              "minimum_font_size": 8.835200309753418,
+              "minimum_font_size": 10.0,
+              "styled_heading_spans": [
+                {
+                  "size": 20.0,
+                  "flags": 0,
+                  "bidi": 0,
+                  "char_flags": 16,
+                  "font": "Droid Sans Fallback Regular",
+                  "color": 1720460,
+                  "alpha": 255,
+                  "ascender": 1.0420000553131104,
+                  "descender": -0.26499998569488525,
+                  "text": "文書翻訳のレイアウト制御",
+                  "origin": [
+                    239.99990844726562,
+                    57.000038146972656
+                  ],
+                  "bbox": [
+                    239.99990844726562,
+                    36.160037994384766,
+                    479.9999084472656,
+                    62.3000373840332
+                  ]
+                }
+              ],
+              "url_characters_present_ignoring_wrap": true,
+              "uri_targets_unchanged": true
+            },
+            "original_table_cells_correct": 4,
+            "original_table_cells_total": 4
+          },
+          "elapsed_ms": 716.786528006196,
+          "bytes": 1785956
+        },
+        {
+          "case": "columns",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              3.284356725146199
+            ],
+            "block_placements": [
+              {
+                "id": "p1-b1-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  380.0,
+                  60.000022888183594,
+                  651.4638061523438,
+                  129.6617889404297
+                ],
+                "placed_rect": [
+                  380.0,
+                  60.000022888183594,
+                  651.4638061523438,
+                  129.6617889404297
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              },
+              {
+                "id": "p1-b2-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  60.000022888183594,
+                  311.4639587402344,
+                  129.6617889404297
+                ],
+                "placed_rect": [
+                  40.0,
+                  60.000022888183594,
+                  311.4639587402344,
+                  129.6617889404297
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              }
+            ],
+            "expanded_blocks": 0,
+            "source_size_blocks": 2,
+            "minimum_font_size": 12.0,
+            "font_size_floor_policy": 1.0,
+            "font_floor_violating_blocks": 0
+          },
+          "elapsed_ms": 268.9049690961838,
+          "bytes": 1705409
+        },
+        {
+          "case": "graphics",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              1.8838328460038987
+            ],
+            "block_placements": [
+              {
+                "id": "p1-b1-u1",
+                "page": 1,
+                "role": "heading",
+                "source_rect": [
+                  40.0,
+                  23.599998474121094,
+                  353.4199523925781,
+                  51.13999938964844
+                ],
+                "placed_rect": [
+                  40.0,
+                  23.599998474121094,
+                  353.4199523925781,
+                  51.13999938964844
+                ],
+                "source_font_size": 20.0,
+                "placed_font_size": 20.0,
+                "expanded": false
+              },
+              {
+                "id": "p1-b2-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  75.0000228881836,
+                  668.9437255859375,
+                  109.21257019042969
+                ],
+                "placed_rect": [
+                  40.0,
+                  75.0000228881836,
+                  668.9437255859375,
+                  109.21257019042969
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": false
+              },
+              {
+                "id": "p1-b3-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  693.5499877929688,
+                  181.73196411132812,
+                  701.7940063476562
+                ],
+                "placed_rect": [
+                  40.0,
+                  693.5499877929688,
+                  181.73196411132812,
+                  701.7940063476562
+                ],
+                "source_font_size": 6.0,
+                "placed_font_size": 6.0,
+                "expanded": false
+              }
+            ],
+            "expanded_blocks": 0,
+            "source_size_blocks": 3,
+            "minimum_font_size": 6.0,
+            "font_size_floor_policy": 1.0,
+            "font_floor_violating_blocks": 0,
+            "image_pixels_exact": true,
+            "vector_pixels_exact": true
+          },
+          "elapsed_ms": 309.9136706441641,
+          "bytes": 1708277
+        },
+        {
+          "case": "dense",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              2.169407894736842
+            ],
+            "block_placements": [
+              {
+                "id": "p1-b1-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  57.099998474121094,
+                  268.083984375,
+                  73.58799743652344
+                ],
+                "placed_rect": [
+                  40.0,
+                  57.099998474121094,
+                  304.083984375,
+                  109.58799743652344
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 3.3854737059613598,
+                "expanded": true
+              }
+            ],
+            "expanded_blocks": 1,
+            "source_size_blocks": 0,
+            "minimum_font_size": 3.385439872741699,
+            "font_size_floor_policy": 1.0,
+            "font_floor_violating_blocks": 0
+          },
+          "elapsed_ms": 274.90929141640663,
+          "bytes": 1706236
+        },
+        {
+          "case": "rotated-page",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              1.4150219298245614
+            ],
+            "block_placements": [
+              {
+                "id": "p1-b1-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  60.000022888183594,
+                  528.9038696289062,
+                  76.48802185058594
+                ],
+                "placed_rect": [
+                  40.0,
+                  60.000022888183594,
+                  528.9038696289062,
+                  112.48802185058594
+                ],
+                "source_font_size": 12.0,
+                "placed_font_size": 12.0,
+                "expanded": true
+              },
+              {
+                "id": "p1-b2-u1",
+                "page": 1,
+                "role": "paragraph",
+                "source_rect": [
+                  40.0,
+                  729.25,
+                  292.3099365234375,
+                  742.989990234375
+                ],
+                "placed_rect": [
+                  40.0,
+                  729.25,
+                  292.3099365234375,
+                  742.989990234375
+                ],
+                "source_font_size": 10.0,
+                "placed_font_size": 10.0,
+                "expanded": false
+              }
+            ],
+            "expanded_blocks": 1,
+            "source_size_blocks": 2,
+            "minimum_font_size": 10.0,
+            "font_size_floor_policy": 1.0,
+            "font_floor_violating_blocks": 0
+          },
+          "elapsed_ms": 262.40652427077293,
+          "bytes": 1705070
+        }
+      ]
+    },
+    {
+      "engine": "PyMuPDF HTML experiment",
+      "cases": [
+        {
+          "case": "mixed",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              8.064327485380117,
+              3.3376583820662766
+            ],
+            "minimum_font_size": 10.0,
+            "font_size_floor_policy": 8,
+            "font_floor_violating_blocks": 0,
+            "mixed_layout": {
+              "url_bytes_present": false,
+              "inline_code_bytes_present": true,
+              "code_lines_present": [
+                true,
+                true,
+                true
+              ],
+              "protected_characters_same_coordinates": {
+                "code_block": true,
+                "inline_code": false,
+                "wrapped_url": false
+              },
+              "links_count": 5,
+              "link_uris": [
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en"
+              ],
+              "all_links_overlap_visible_text": true,
+              "background_pixel_before": [
+                224,
+                239,
+                255
+              ],
+              "background_pixel_after": [
+                224,
+                239,
+                255
+              ],
+              "background_preserved": true,
+              "rotated_line_directions": [
+                [
+                  0.0,
+                  -1.0
+                ]
+              ],
+              "column_horizontal_bounds_respected": {
+                "right_column": true,
+                "left_column": true
+              },
+              "short_heading_translated": true,
+              "flow_inline_code_bytes_present": true,
+              "styled_heading_colored": true,
+              "styled_heading_center_x": 359.9999084472656,
+              "short_list_line_count": 3,
+              "short_list_same_line_structure": false,
+              "minimum_font_size": 10.0,
               "styled_heading_spans": [
                 {
                   "size": 20.0,
@@ -703,8 +1085,8 @@
             "original_table_cells_correct": 4,
             "original_table_cells_total": 4
           },
-          "elapsed_ms": 652.3615568876266,
-          "bytes": 1785972
+          "elapsed_ms": 644.0524719655514,
+          "bytes": 1785966
         },
         {
           "case": "columns",
@@ -717,9 +1099,10 @@
               3.4700292397660824
             ],
             "minimum_font_size": 12.0,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 266.60291478037834,
+          "elapsed_ms": 268.24977062642574,
           "bytes": 1705413
         },
         {
@@ -733,18 +1116,19 @@
               1.964059454191033
             ],
             "minimum_font_size": 6.0,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 0,
             "image_pixels_exact": true,
             "vector_pixels_exact": true
           },
-          "elapsed_ms": 303.80021035671234,
+          "elapsed_ms": 311.90500408411026,
           "bytes": 1708282
         },
         {
           "case": "dense",
           "status": "rejected",
           "error": "ValueError: p1-b1-u1: overflow above readable font floor",
-          "elapsed_ms": 3.7270355969667435
+          "elapsed_ms": 3.3317580819129944
         },
         {
           "case": "rotated-page",
@@ -757,9 +1141,10 @@
               1.304641812865497
             ],
             "minimum_font_size": 8.727239608764648,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 260.74474304914474,
+          "elapsed_ms": 260.15666499733925,
           "bytes": 1705072
         }
       ]
@@ -779,6 +1164,7 @@
               3.295443469785575
             ],
             "minimum_font_size": 6.327280044555664,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 2,
             "mixed_layout": {
               "url_bytes_present": true,
@@ -947,7 +1333,7 @@
             "original_table_cells_correct": 4,
             "original_table_cells_total": 4
           },
-          "elapsed_ms": 364.7587914019823,
+          "elapsed_ms": 370.25093473494053,
           "bytes": 158619
         },
         {
@@ -961,9 +1347,10 @@
               3.298611111111111
             ],
             "minimum_font_size": 12.0,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 106.73512704670429,
+          "elapsed_ms": 591.4282780140638,
           "bytes": 13659
         },
         {
@@ -977,11 +1364,12 @@
               1.8891934697855752
             ],
             "minimum_font_size": 6.0,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 0,
             "image_pixels_exact": true,
             "vector_pixels_exact": true
           },
-          "elapsed_ms": 130.9557668864727,
+          "elapsed_ms": 123.49512428045273,
           "bytes": 24019
         },
         {
@@ -995,9 +1383,10 @@
               0.6544225146198831
             ],
             "minimum_font_size": 1.769484043121338,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 1
           },
-          "elapsed_ms": 109.22078415751457,
+          "elapsed_ms": 199.50157217681408,
           "bytes": 12969
         },
         {
@@ -1011,9 +1400,10 @@
               1.1876827485380117
             ],
             "minimum_font_size": 7.494539737701416,
+            "font_size_floor_policy": 8,
             "font_floor_violating_blocks": 1
           },
-          "elapsed_ms": 104.0300652384758,
+          "elapsed_ms": 103.6523338407278,
           "bytes": 13772
         }
       ]

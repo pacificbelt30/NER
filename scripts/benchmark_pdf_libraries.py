@@ -24,7 +24,7 @@ import pymupdf as fitz
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.audit_pdf_layout import CODE, INLINE_CODE, JP_BODY, URL, fixture, inspect, spans
-from ner.block_layout import PreparedPage, RichPlacement, normalize_uri_links
+from ner.block_layout import MIN_FONT_SIZE, PreparedPage, RichPlacement, normalize_uri_links
 from ner.paper_extract import PaperExtract
 from ner.text_blocks import (BlockTranslation, LiteralRange, TOKEN, TranslationBlock,
                              prepare_block, restore_text, validate_tokens)
@@ -343,6 +343,7 @@ def layout_benchmark(files, regions, root):
             destination = root / (engine.replace(' ', '_').replace('+', 'and') + '-' + source.name)
             started = time.perf_counter()
             try:
+                placements = []
                 with PaperExtract(source) as extractor:
                     extractor.extract_textinfo()
                     results = translations(extractor, dense=source.stem == 'dense')
@@ -352,6 +353,14 @@ def layout_benchmark(files, regions, root):
                         if engine == 'NER current':
                             plans = [extractor.prepare_page(index, [row.text for row in page], results=page)
                                      for index, page in enumerate(results)]
+                            placements = [{
+                                'id': block['id'], 'page': index + 1, 'role': block['role'],
+                                'source_rect': block['bbox'], 'placed_rect': plan.rect,
+                                'source_font_size': block['fontsize'],
+                                'placed_font_size': plan.font_size * plan.scale,
+                                'expanded': any(abs(a - b) > 1e-4 for a, b in zip(block['bbox'], plan.rect)),
+                            } for index, page_plan in enumerate(plans) if page_plan is not None
+                               for block, plan in zip(extractor.pages_info[index], page_plan.rich)]
                         else:
                             plans = all_rich(extractor, results)
                         extractor.fill_all_blocks()
@@ -361,16 +370,23 @@ def layout_benchmark(files, regions, root):
                         extractor.doc.save(destination, garbage=4, deflate=True)
                     source_blocks = extractor.pages_info
                 metrics = preservation(source, destination)
+                if engine == 'NER current':
+                    metrics['block_placements'] = placements
+                    metrics['expanded_blocks'] = sum(row['expanded'] for row in placements)
+                    metrics['source_size_blocks'] = sum(abs(row['placed_font_size'] - max(
+                        row['source_font_size'], MIN_FONT_SIZE)) < 1e-4 for row in placements)
                 with fitz.open(destination) as doc:
                     sizes = [span['size'] for page in doc for span in spans(page)]
                     metrics['minimum_font_size'] = min(sizes)
+                    floor = MIN_FONT_SIZE if engine == 'NER current' else 8
+                    metrics['font_size_floor_policy'] = floor
                     violations = 0
                     for index, blocks in enumerate(source_blocks):
                         for block in blocks:
                             box = fitz.Rect(block['bbox'])
                             inside = [span for span in spans(doc[index]) if box.contains(
                                 (fitz.Rect(span['bbox']).tl + fitz.Rect(span['bbox']).br) / 2)]
-                            if any(span['size'] < min(8, block['fontsize']) - 0.1 for span in inside):
+                            if any(span['size'] < min(floor, block['fontsize']) - 0.1 for span in inside):
                                 violations += 1
                     metrics['font_floor_violating_blocks'] = violations
                 if source.stem == 'mixed':

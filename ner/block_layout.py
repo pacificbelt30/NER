@@ -9,6 +9,7 @@ import re
 import pymupdf as fitz
 
 from .errors import PDFError
+from .layout_space import PageLayoutSpace
 from .text_blocks import TOKEN
 
 
@@ -28,9 +29,11 @@ class RichPlacement:
     scale_low: float
     rotate: int
     archive: object = None
+    font_size: float = 0
+    scale: float = 1
 
 
-def prepare_rich(source_page, block, result, font_path=None):
+def prepare_rich(source_page, block, result, font_path=None, *, space=None):
     page_rect = source_page.rect * source_page.derotation_matrix
     protected = {span.token: span for span in result.spans}
     parts, cursor = [], 0
@@ -56,7 +59,9 @@ def prepare_rich(source_page, block, result, font_path=None):
     style = 'italic' if first['flags'] & fitz.TEXT_FONT_ITALIC else 'normal'
     css = (f'body {{margin:0; font-family:sans-serif; font-size:{size}pt; line-height:1.1; '
            f'color:#{color:06x}; font-weight:{weight}; font-style:{style};}} '
-           f"p {{margin:0; text-align:{block.get('text_align', 'left')};}} "
+           # CJK fallback glyph bounds can overhang the CSS line box. Vertical
+           # padding keeps that ink inside the same obstacle-checked rectangle.
+           f"p {{margin:0; padding:0.25em 0; text-align:{block.get('text_align', 'left')};}} "
            'code {font-family:monospace; font-size:1em;} a {color:#004c99;}')
     archive = None
     if font_path:
@@ -73,38 +78,34 @@ def prepare_rich(source_page, block, result, font_path=None):
     rect = fitz.Rect(block['bbox'])
     if rect.is_empty or rect.is_infinite or not rect.is_valid:
         raise PDFError('Text block has an invalid rectangle.')
-    plan = RichPlacement(block['bbox'], '<p>' + ''.join(parts) + '</p>', css, minimum / size, rotate, archive)
-    def fits(rect):
+    plan = RichPlacement(block['bbox'], '<p>' + ''.join(parts) + '</p>', css, minimum / size,
+                         rotate, archive, size)
+    def fit(rect, scale_low):
         with fitz.open() as scratch:
             page = scratch.new_page(width=page_rect.width, height=page_rect.height)
-            spare, scale = page.insert_htmlbox(rect, plan.text, css=css, scale_low=plan.scale_low,
+            spare, scale = page.insert_htmlbox(rect, plan.text, css=css, scale_low=scale_low,
                                           rotate=rotate, archive=archive)
-            return spare >= 0 and scale >= plan.scale_low - 1e-8
-    if not fits(plan.rect):
-        # Permit at most half an inch of horizontal growth into verified free space.
-        # Code blocks and all other text, images, and vector strokes are obstacles.
-        rect = fitz.Rect(plan.rect)
-        expanded = fitz.Rect(rect)
-        if rotate == 0 and not block.get('fixed_layout'):
-            edge = min(rect.x1 + 36, page_rect.x1 - max(4, min(rect.x0, 40)))
-            obstacles = [fitz.Rect(item['bbox']) for item in source_page.get_text(
-                'dict', flags=fitz.TEXTFLAGS_TEXT)['blocks'] if item['type'] == 0
-                and tuple(item['bbox']) != tuple(block.get('source_bbox', block['bbox']))]
-            obstacles.extend(fitz.Rect(item['bbox']) for item in source_page.get_image_info())
-            for drawing in source_page.get_drawings():
-                box = fitz.Rect(drawing['rect'])
-                if drawing['fill'] is not None and box.contains(rect):
-                    continue  # The existing background is not a new obstacle.
-                pad = max(0.5, (drawing.get('width') or 0) / 2)
-                obstacles.append(box + (-pad, -pad, pad, pad))
-            for obstacle in obstacles:
-                if obstacle.y0 < rect.y1 and rect.y0 < obstacle.y1 and obstacle.x1 > rect.x1:
-                    edge = min(edge, max(rect.x1, obstacle.x0 - 2))
-            expanded.x1 = max(rect.x1, edge)
-        if expanded == rect or not fits(expanded):
-            raise PDFError(f"Page {block['page'] + 1}, block {block['id']}: translation "
-                           'does not fit above the minimum font size.')
-        plan.rect = tuple(expanded)
+            return scale if spare >= 0 and scale >= scale_low - 1e-8 else None
+    if space is None:
+        space = PageLayoutSpace(source_page, [block])
+    candidates = space.candidates(block, rotate)
+    # Exhaust source-size placement and verified free space before shrinking.
+    for candidate in candidates:
+        if fit(candidate, 1) is not None:
+            plan.rect = tuple(candidate)
+            return plan
+    # A containing rectangle cannot yield a worse fit: only test maximal frames.
+    maximal = [rect for rect in candidates if not any(other != rect and other.contains(rect)
+                                                    for other in candidates)]
+    best = None
+    for candidate in maximal:
+        scale = fit(candidate, plan.scale_low)
+        if scale is not None and (best is None or scale > best[1]):
+            best = candidate, scale
+    if best is None:
+        raise PDFError(f"Page {block['page'] + 1}, block {block['id']}: translation "
+                       f'does not fit at the minimum font size ({minimum:g}pt).')
+    plan.rect, plan.scale = tuple(best[0]), best[1]
     return plan
 
 

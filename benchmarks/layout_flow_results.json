@@ -1,0 +1,215 @@
+{
+  "date": "2026-10-13",
+  "policy": {
+    "placement": "HTML for all translated blocks",
+    "minimum_font_size_pt": 1,
+    "maximum_growth_per_writing_axis_pt": 36,
+    "order": [
+      "source frame at source size",
+      "safe expanded frames at source size",
+      "shrink to at least 1pt"
+    ],
+    "tables": "fixed cell bounds",
+    "overflow": "abort before redaction or replacing output",
+    "per_block_adjustment_ui": "deferred"
+  },
+  "regression": {
+    "pytest_passed": 208,
+    "supported_writing_and_page_rotations_checked": [
+      0,
+      90,
+      180,
+      270
+    ],
+    "nonzero_crop_boxes_checked": true,
+    "native_cli_api_browser": {
+      "cli": {
+        "info_without_config": true,
+        "native_translation": true,
+        "alternating_comparison": true,
+        "missing_file_nonzero": true,
+        "source_unchanged": true
+      },
+      "http": {
+        "native_job_and_downloads": true,
+        "duplicate_receipt": true,
+        "page_preview": true,
+        "invalid_pdf_job_failed": true,
+        "running_cancel": true,
+        "retry": true
+      },
+      "browser": {
+        "actual_upload_and_translation": true,
+        "png_preview": true,
+        "decoded_previews_have_content": true,
+        "reload_recovery": true,
+        "mobile_no_overflow": true,
+        "javascript_errors": []
+      }
+    },
+    "native_long_block_characters": 3057,
+    "native_long_block_chunks": 5
+  },
+  "native_tables": {
+    "ruled": {
+      "backend": "BERGAMOT",
+      "seconds": 0.9397028591483831,
+      "execution": "native_worker",
+      "selected_blocks": 5,
+      "metrics": {
+        "translated_cells_correct": 5,
+        "translated_cells_total": 5,
+        "skipped_cells_exact": 6,
+        "skipped_cells_total": 6,
+        "grid_and_background_probes_exact": 11,
+        "grid_and_background_probes_total": 11,
+        "uri_on_visible_address": true,
+        "cells": [
+          {
+            "source": "Engine",
+            "translated": false,
+            "visible": "Engine",
+            "passed": true
+          },
+          {
+            "source": "Status",
+            "translated": false,
+            "visible": "Status",
+            "passed": true
+          },
+          {
+            "source": "Count",
+            "translated": false,
+            "visible": "Count",
+            "passed": true
+          },
+          {
+            "source": "Local translation",
+            "translated": true,
+            "visible": "現地翻訳",
+            "passed": true
+          },
+          {
+            "source": "Ready for use",
+            "translated": true,
+            "visible": "すぐに使える",
+            "passed": true
+          },
+          {
+            "source": "42",
+            "translated": false,
+            "visible": "42",
+            "passed": true
+          },
+          {
+            "source": "Use a local model.\nKeep files on this computer.",
+            "translated": true,
+            "visible": "ローカルモデルを使用してください。このコンピュータにファイルを保存してください。",
+            "passed": true
+          },
+          {
+            "source": "Read https://example.org/help now.",
+            "translated": true,
+            "visible": "今すぐhttps://example.org/helpを読んで。",
+            "passed": true
+          },
+          {
+            "source": "Bergamot",
+            "translated": false,
+            "visible": "Bergamot",
+            "passed": true
+          },
+          {
+            "source": "Keep the original table layout.",
+            "translated": true,
+            "visible": "元のテーブルレイアウトを維持してください。",
+            "passed": true
+          },
+          {
+            "source": "www.example.org",
+            "translated": false,
+            "visible": "www.example.org",
+            "passed": true
+          }
+        ]
+      }
+    },
+    "regular_borderless": {
+      "backend": "BERGAMOT",
+      "seconds": 0.4357422664761543,
+      "execution": "native_worker",
+      "selected_blocks": 6,
+      "metrics": {
+        "translated_cells_correct": 6,
+        "translated_cells_total": 6,
+        "skipped_cells_exact": 2,
+        "skipped_cells_total": 2,
+        "grid_and_background_probes_exact": 1,
+        "grid_and_background_probes_total": 1,
+        "uri_on_visible_address": null,
+        "cells": [
+          {
+            "source": "Local translation",
+            "translated": true,
+            "visible": "現地翻訳",
+            "passed": true
+          },
+          {
+            "source": "Ready for use",
+            "translated": true,
+            "visible": "すぐに使える",
+            "passed": true
+          },
+          {
+            "source": "Keep the original table layout.",
+            "translated": true,
+            "visible": "元のテーブルレイアウトを維持してください。",
+            "passed": true
+          },
+          {
+            "source": "Ready for use",
+            "translated": true,
+            "visible": "すぐに使える",
+            "passed": true
+          },
+          {
+            "source": "Use a local model.",
+            "translated": true,
+            "visible": "ローカルモデルを使用してください。",
+            "passed": true
+          },
+          {
+            "source": "Keep files on this computer.",
+            "translated": true,
+            "visible": "このコンピュータにファイルを保存してください。",
+            "passed": true
+          },
+          {
+            "source": "Offline",
+            "translated": false,
+            "visible": "Offline",
+            "passed": true
+          },
+          {
+            "source": "42",
+            "translated": false,
+            "visible": "42",
+            "passed": true
+          }
+        ]
+      }
+    }
+  },
+  "controlled_layout": {
+    "scope": "Five self-authored PDFs / six pages, fixed Japanese translations; not a general PDF-fidelity or model-quality score.",
+    "normal_blocks_at_source_size": 19,
+    "normal_blocks_total": 20,
+    "current_stress_minimum_font_size_pt": 3.385439872741699,
+    "previous_textwriter_stress_minimum_font_size_pt": 1.5,
+    "normal_cases_written": 4,
+    "normal_cases_total": 4,
+    "minimum_font_policy_violations": 0,
+    "per_block_report": "benchmarks/pdf_library_results.json"
+  },
+  "evidence_directory": "pdf/flow-layout (ignored generated PDFs / PNGs)"
+}

@@ -434,12 +434,12 @@ into a successful PDF. There is no automatic switch to an online engine.
 Protected inline runs flow with their translated paragraph using escaped HTML;
 literal URLs and linked labels get clickable hit areas in their new positions.
 The native Bergamot HTML/alignment mode is not needed. Japanese link fragments
-are normalized after insertion. Protected layouts have a 1pt floor and
-may grow right by at most 36pt after
-checking other text, images, and vector strokes. If they still cannot fit, the
+are normalized after insertion. All blocks share a 1pt floor and may grow by at
+most 36pt along each writing axis after checking column limits, other text,
+images, vector strokes and previously planned translations. If they still cannot fit, the
 PDF is not written. Standalone code retains exact positions; inline code can
-move to follow Japanese word order. Plain paragraph font fitting and general
-heading/table/rotation reconstruction still have the limitations above.
+move to follow Japanese word order. Paragraphs, headings and table cells use the
+same HTML placement path; mixed span styles and arbitrary skew remain limited.
 
 API/UI progress includes current-chunk counts, and cancellation is checked
 between chunks. These changes are covered by literal/Unicode/chunk/cache/failure,
@@ -477,11 +477,11 @@ Tables and character geometry are separate diagnostics, excluded from text timin
 
 | Library (version) | Text extraction, 6 pages (median ms) | Text probes | Correct column order | Character boxes | Exact table |
 | --- | ---: | ---: | --- | --- | --- |
-| PyMuPDF 1.28.2 | 9.86 | 10/10 | no | yes | yes |
-| pdfplumber 0.11.10 | 71.13 | 9/10 | no | yes | yes |
-| pdfminer.six 20260107 | 47.11 | 10/10 | yes | yes | not exposed / not tested |
-| pypdf 6.20.1 | 10.25 | 10/10 | no | no | not exposed / not tested |
-| pypdfium2 5.14.0 | 5.55 | 10/10 | no | yes | not exposed / not tested |
+| PyMuPDF 1.28.2 | 9.69 | 10/10 | no | yes | yes |
+| pdfplumber 0.11.10 | 73.19 | 9/10 | no | yes | yes |
+| pdfminer.six 20260107 | 47.06 | 10/10 | yes | yes | not exposed / not tested |
+| pypdf 6.20.1 | 10.69 | 10/10 | no | no | not exposed / not tested |
+| pypdfium2 5.14.0 | 5.59 | 10/10 | no | yes | not exposed / not tested |
 
 The ten text probes are exact phrases/literals with whitespace ignored. Pdfplumber
 missed the rotated phrase in its default text output. The column check requires
@@ -507,7 +507,7 @@ expected; they are not scored as layout fidelity.
 
 | Writer experiment | Normal documents | Overfull document | Heading color / rotated text | Original prose removed | Skipped table labels in source cells |
 | --- | --- | --- | --- | --- | --- |
-| NER current (TextWriter + protected/cell HTML runs) | 4/4 written | written at 1.5pt | lost / lost | yes | 4/4 |
+| NER current (HTML for all blocks, grow before shrink) | 4/4 written | written at 3.39pt, 1pt lower bound | retained / retained | yes | 4/4 |
 | PyMuPDF HTML for all blocks (experimental) | 4/4 written | rejected at readable floor | retained / retained | yes | 4/4 |
 | ReportLab 5.0.1 + pypdf overlay | 4/4 written | written below 2pt | replacement loses style/direction | no: original text remains extractable | 4/4 |
 
@@ -536,26 +536,26 @@ downloads, previews, asynchronously reported invalid PDF errors, cancellation of
 running job, and retry. Real Chromium checked upload/translation, PNG previews,
 reload recovery, mobile width, and absence of JavaScript errors. Structured results
 are tracked in `benchmarks/end_to_end_results.json`; generated PDF/PNG evidence
-stays in the ignored `pdf/` directory. The full unit/integration suite passes 184
+stays in the ignored `pdf/` directory. The full unit/integration suite passes 208
 tests, including preservation of the cancellation exception across chunk callbacks.
 Index protocol/prompt tests use a loopback fixture server, not a loaded Index model.
 
 **Recommended next changes, supported by these results:**
 
-1. Keep PyMuPDF as the editing engine and use the all-block HTML approach to preserve
-   source colors, cardinal directions, line spacing, and alignment. Map Japanese
+1. Keep the implemented PyMuPDF all-block HTML path. Map Japanese
    normal/bold/italic font files explicitly; do not assume a fallback font retains
-   source emphasis. Apply a readable size floor to plain blocks too and surface
-   overflow with page/block IDs instead of shrinking to 1.5pt.
+   source emphasis. The requested 1pt floor is enforced; overflow identifies the
+   page and block. A per-block adjustment UI is deferred at the user's request.
 2. Extend the implemented cell detector to irregular borderless layouts and
    multi-line borderless cells. Expose inferred cell bounds and classification in
    an editable preview; existing text alone cannot establish every intended grid.
 3. Build column regions and their reading order before assigning heading context.
    A global y/x sort still interleaves columns. Pdfminer.six is a useful secondary
    analysis candidate, but its one-fixture success needs broader testing.
-4. Extend rotation testing to 180/270 degrees and nonzero crop boxes, mixed code/prose blocks,
-   internal destinations, long wrapped links, mathematical text, and scanned pages.
-   Current heuristics and this six-page corpus cannot establish those guarantees.
+4. Broaden the current 0/90/180/270-degree and nonzero crop-box tests to mixed
+   code/prose blocks, internal destinations, long wrapped links, mathematical
+   text, arbitrary skew and scanned pages. Current heuristics and this six-page
+   corpus cannot establish universal guarantees.
    An editable per-region preview should expose uncertain classification and fit.
 
 Primary API references: [PyMuPDF text/HTML placement](https://pymupdf.readthedocs.io/en/latest/recipes-text.html),
@@ -630,7 +630,7 @@ python scripts/evaluate_pdf_tables.py --output pdf/table-audit/native \
 ```
 
 PDF/PNG evidence is generated under the ignored `pdf/table-audit/` directory. The
-full 184-test suite and native CLI/API/Chromium acceptance passed after these changes.
+full 208-test suite and native CLI/API/Chromium acceptance passed after these changes.
 Table API reference: [PyMuPDF table detection and redaction](https://pymupdf.readthedocs.io/en/latest/page.html).
 
 ### Placement policy: minimum size
@@ -650,3 +650,35 @@ color, bold/italic flags, detected alignment and cardinal writing direction are
 applied to the HTML. Isolated model newlines are soft wraps; explicit paragraph
 breaks and protected literal line breaks are retained. Mixed emphasis within a
 translated sentence and arbitrary skew still need richer source/style mapping.
+
+### Placement order: source size, safe expansion, then shrink
+
+1. Try the original rectangle at the source font size, with normal word wrapping.
+2. Try conservative expansion in verified free space, still at source size.
+3. If those frames cannot fit, choose the best fitting scale down to **1pt**.
+   If nothing fits, fail before redaction / output replacement. The deferred
+   per-block adjustment UI and partial-success behavior are not implemented.
+
+`PageLayoutSpace` snapshots source glyphs, images, vector shapes and table regions
+once per page and reserves each chosen translation frame for subsequent blocks.
+Frames may expand by at most 36pt in the text direction and 36pt in the line-wrap
+direction, mapped to 0/90/180/270-degree writing. Widening and deepening are checked
+together so diagonal obstacles cannot be bypassed. Detected column gutters,
+visible crop bounds and containing colored panels constrain expansion. Centered
+headings widen symmetrically; table cells and ambiguous fixed labels stay bounded.
+Uncertain existing overlap keeps the original frame. Small vertical HTML padding
+keeps CJK glyph bounds within the obstacle-checked frame.
+
+The controlled six-page corpus now places **19/20 normal-document blocks at source
+size** (the remaining rich block shrinks). The 1,000-character stress translation
+fits at **3.39pt**, versus the earlier 1.5pt TextWriter result. This comes from
+using available space before shrinking, not a claim about arbitrary PDFs or model
+quality. Both columns remain within the fixture's original horizontal bounds;
+image/vector pixel probes, code coordinates, background, heading color/alignment
+and rotated text direction pass. The raw report includes per-block source/placed
+rectangles and font sizes in `benchmarks/pdf_library_results.json`.
+
+`benchmarks/layout_flow_results.json` records the 208-test run, real Bergamot
+checks (including the 3,057-character / five-chunk block), native table containment
+(5/5 ruled, 6/6 regular borderless), and real CLI/API/Chromium acceptance. Generated
+PDF/PNG evidence is under `pdf/flow-layout/`. Library selection remains PyMuPDF.
