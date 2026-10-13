@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pymupdf = "*"
+pymupdf = ">=1.24.3"
 requests = "*"
 requests-oauthlib = "*"
 pyyaml = "*"
@@ -17,6 +17,8 @@ pymupdf-fonts = "*"
 
 [dev-packages]
 pynvim = "*"
+pytest = "*"
+httpx = "*"
 
 [requires]
 python_version = "3.11"

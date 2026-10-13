@@ -1,9 +1,30 @@
+# GOOGLE / TEXTRA / INDEX / BERGAMOT (PDF translation is English -> Japanese)
 PRIORITY: 'GOOGLE'
+# Retry transient transport/server errors only. Duplicate cache is per document.
+RETRIES: 1
+CACHE_SIZE: 1024
 GOOGLE:
-  URL: 'https://google.com'
+  URL: 'https://translate.googleapis.com/translate_a/single'
+  TIMEOUT: 60
+  REQUEST_INTERVAL: 0
 TEXTRA:
   NAME: sample
   KEY: keysamplekeysamplekeysamplekeysamplekeysample
   SECRET: secretsamplesecretsamplesecretsamplesecretsample
   URL: 'https://mt-auto-minhon-mlt.ucri.jgn-x.jp/api/mt/generalNT_en_ja/'
-FONT: '~/example.ttf'
+  TIMEOUT: 60
+  REQUEST_INTERVAL: 3
+INDEX:
+  BASE_URL: 'http://127.0.0.1:8001/v1'
+  MODEL: 'IndexTeam/Index-Translate-2B'
+  MAX_TOKENS: 4096
+  TIMEOUT: 300
+BERGAMOT:
+  BINARY: 'translator-cli'
+  # Optional: keep the model loaded across blocks (takes precedence over BINARY).
+  # WORKER_BINARY: './firefox-translations/inference/build/ner-bergamot-worker'
+  MODEL_CONFIG: './models/bergamot/en-ja/config.yml'
+  NUM_WORKERS: 1
+  TIMEOUT: 300
+# Empty means the built-in Japanese font.
+FONT: ''
