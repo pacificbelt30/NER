@@ -1,9 +1,10 @@
-"""Place validated protected spans in the translated paragraph's text flow."""
+"""Place all translated PDF blocks, including literals, in HTML text flow."""
 
 from dataclasses import dataclass
 import html
 import math
 from pathlib import Path
+import re
 
 import pymupdf as fitz
 
@@ -12,6 +13,11 @@ from .text_blocks import TOKEN
 
 
 MIN_FONT_SIZE = 1.0
+
+
+def _prose_html(text):
+    # Single model line breaks are soft wraps; retain explicit paragraph breaks.
+    return html.escape(re.sub(r'(?<!\n)\n(?!\n)', ' ', text)).replace('\n', '<br>')
 
 
 @dataclass
@@ -29,7 +35,7 @@ def prepare_rich(source_page, block, result, font_path=None):
     protected = {span.token: span for span in result.spans}
     parts, cursor = [], 0
     for match in TOKEN.finditer(result.canonical_text):
-        parts.append(html.escape(result.canonical_text[cursor:match.start()]).replace('\n', '<br>'))
+        parts.append(_prose_html(result.canonical_text[cursor:match.start()]))
         span = protected[match.group()]
         content = html.escape(span.original).replace('\n', '<br>')
         if span.kind == 'code':
@@ -38,14 +44,18 @@ def prepare_rich(source_page, block, result, font_path=None):
             content = '<a href="' + html.escape(span.href, quote=True) + '">' + content + '</a>'
         parts.append(content)
         cursor = match.end()
-    parts.append(html.escape(result.canonical_text[cursor:]).replace('\n', '<br>'))
+    parts.append(_prose_html(result.canonical_text[cursor:]))
     size = block['fontsize']
     if not math.isfinite(size) or size <= 0:
         raise PDFError('Text block has an invalid font size.')
     size = max(size, MIN_FONT_SIZE)
     minimum = MIN_FONT_SIZE
-    color = block['lines'][0]['spans'][0]['color']
-    css = (f'body {{margin:0; font-family:sans-serif; font-size:{size}pt; line-height:1.1; color:#{color:06x};}} '
+    first = block['lines'][0]['spans'][0]
+    color = first['color']
+    weight = 'bold' if first['flags'] & fitz.TEXT_FONT_BOLD else 'normal'
+    style = 'italic' if first['flags'] & fitz.TEXT_FONT_ITALIC else 'normal'
+    css = (f'body {{margin:0; font-family:sans-serif; font-size:{size}pt; line-height:1.1; '
+           f'color:#{color:06x}; font-weight:{weight}; font-style:{style};}} '
            f"p {{margin:0; text-align:{block.get('text_align', 'left')};}} "
            'code {font-family:monospace; font-size:1em;} a {color:#004c99;}')
     archive = None
@@ -59,7 +69,10 @@ def prepare_rich(source_page, block, result, font_path=None):
     rotate = next((value for key, value in rotations.items()
                    if all(abs(a - b) < 0.001 for a, b in zip(direction, key))), None)
     if rotate is None:
-        raise PDFError('Protected text block has an unsupported rotation angle.')
+        raise PDFError('Text block has an unsupported rotation angle.')
+    rect = fitz.Rect(block['bbox'])
+    if rect.is_empty or rect.is_infinite or not rect.is_valid:
+        raise PDFError('Text block has an invalid rectangle.')
     plan = RichPlacement(block['bbox'], '<p>' + ''.join(parts) + '</p>', css, minimum / size, rotate, archive)
     def fits(rect):
         with fitz.open() as scratch:
@@ -89,7 +102,7 @@ def prepare_rich(source_page, block, result, font_path=None):
                     edge = min(edge, max(rect.x1, obstacle.x0 - 2))
             expanded.x1 = max(rect.x1, edge)
         if expanded == rect or not fits(expanded):
-            raise PDFError(f"Page {block['page'] + 1}, block {block['id']}: protected translation "
+            raise PDFError(f"Page {block['page'] + 1}, block {block['id']}: translation "
                            'does not fit above the minimum font size.')
         plan.rect = tuple(expanded)
     return plan
@@ -122,12 +135,12 @@ class PreparedPage:
         self.writer, self.rich = writer, rich
 
     def write_text(self, page, **kwargs):
-        if not self.writer.text_rect.is_empty:
+        if self.writer is not None and not self.writer.text_rect.is_empty:
             self.writer.write_text(page, **kwargs)
         for plan in self.rich:
             spare, scale = page.insert_htmlbox(plan.rect, plan.text, css=plan.css, scale_low=plan.scale_low,
                                           rotate=plan.rotate, archive=plan.archive)
             if spare < 0 or scale < plan.scale_low - 1e-8:
-                raise PDFError('Protected translation overflow during PDF placement.')
+                raise PDFError('Translation overflow during PDF placement.')
         page = page.parent.reload_page(page)
         normalize_uri_links(page)

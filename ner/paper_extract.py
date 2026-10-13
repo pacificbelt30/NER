@@ -166,6 +166,10 @@ class PaperExtract:
                             alignment = 'center'
                         elif right <= max(4, font_size / 2) and left > right + 4:
                             alignment = 'right'
+                    elif role == 'heading':
+                        page_bounds = page.rect * page.derotation_matrix
+                        if abs((bbox.x0 + bbox.x1) / 2 - (page_bounds.x0 + page_bounds.x1) / 2) <= 2:
+                            alignment = 'center'
                     blocks.append({
                         'id': block_id, 'role': role, 'context': previous_context,
                         'bbox': tuple(bbox), 'source_bbox': block['bbox'],
@@ -331,7 +335,6 @@ class PaperExtract:
         if not blocks:
             return None
         page = self.new_doc[page_num]
-        writer = fitz.TextWriter(page.rect)
         rich = []
         if results is not None and len(results) != len(blocks):
             raise PDFError(f'Page {page_num + 1}: structured translation block count does not match the PDF.')
@@ -339,18 +342,11 @@ class PaperExtract:
             if not isinstance(text, str) or not text.strip():
                 raise PDFError(f'Page {page_num + 1}: empty or invalid translation.')
             result = results[index] if results is not None else None
-            if result is None and block.get('fixed_layout'):
+            if result is None:
                 protected = prepare_block(TranslationBlock(block['id'], text))
                 result = BlockTranslation(block['id'], text, protected.text, protected.spans, 0)
-            if result is not None and (result.spans or block.get('fixed_layout')):
-                rich.append(prepare_rich(page, block, result, self.font_path))
-                continue
-            text = re.sub(r'\n(?!\n)', ' ', text)
-            size = self.calc_fontsize(page.rect, block['bbox'], text, self.font, block['fontsize'])
-            overflow = writer.fill_textbox(block['bbox'], text, font=self.font, fontsize=size, warn=None)
-            if overflow:
-                raise PDFError(f'Page {page_num + 1}: translation overflow.')
-        return PreparedPage(writer, rich) if rich else writer
+            rich.append(prepare_rich(page, block, result, self.font_path))
+        return PreparedPage(None, rich)
 
     def insert_txt(self, page_num, text):
         texts = text.split(SEPARATOR)

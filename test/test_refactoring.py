@@ -123,20 +123,13 @@ def test_blank_pdf_translation_reports_missing_text(tmp_path, stub_backend):
             connection.post_page()
 
 
-def test_font_search_is_bounded_and_places_all_text(tmp_path, monkeypatch):
+def test_long_html_translation_places_all_text(tmp_path):
     path = tmp_path / 'paper.pdf'
     path.write_bytes(pdf_bytes())
     with PaperExtract(path) as pdf:
         pdf.extract_textinfo()
-        original = fitz.TextWriter
-        calls = []
-        def writer(rect):
-            calls.append(rect)
-            return original(rect)
-        monkeypatch.setattr(fitz, 'TextWriter', writer)
         translation = '非常に長い日本語の翻訳をすべて表示します。' * 12
         prepared = pdf.prepare_page(0, [translation])
-        assert len(calls) <= 10
         pdf.fill_all_blocks()
         prepared.write_text(pdf.doc[0])
         assert translation == pdf.doc[0].get_text().replace('\n', '').replace(' ', '')

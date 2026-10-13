@@ -642,3 +642,11 @@ text is never enlarged beyond the source size (source sizes below 1pt start at
 cannot fit at 1pt fail before original text is redacted or an output is replaced.
 The earlier 8pt measurements above describe the previous policy. A per-block
 adjustment / review UI is deferred; overflow continues to fail the job.
+
+All production PDF translations now use the same PyMuPDF HTML placement path,
+including ordinary prose, tables and protected literals. Plain and structured
+translation callers share it. Source size is the initial maximum; block-level
+color, bold/italic flags, detected alignment and cardinal writing direction are
+applied to the HTML. Isolated model newlines are soft wraps; explicit paragraph
+breaks and protected literal line breaks are retained. Mixed emphasis within a
+translated sentence and arbitrary skew still need richer source/style mapping.
