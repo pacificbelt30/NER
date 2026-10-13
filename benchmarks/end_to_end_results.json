@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "info_without_config": true,
+    "native_translation": true,
+    "alternating_comparison": true,
+    "missing_file_nonzero": true,
+    "source_unchanged": true
+  },
+  "http": {
+    "native_job_and_downloads": true,
+    "duplicate_receipt": true,
+    "page_preview": true,
+    "invalid_pdf_job_failed": true,
+    "running_cancel": true,
+    "retry": true
+  },
+  "browser": {
+    "actual_upload_and_translation": true,
+    "png_preview": true,
+    "decoded_previews_have_content": true,
+    "reload_recovery": true,
+    "mobile_no_overflow": true,
+    "javascript_errors": []
+  }
+}

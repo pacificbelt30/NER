@@ -1,0 +1,1022 @@
+{
+  "versions": {
+    "pymupdf": "1.28.2",
+    "pdfplumber": "0.11.10",
+    "pdfminer.six": "20260107",
+    "pypdf": "6.20.1",
+    "pypdfium2": "5.14.0",
+    "reportlab": "5.0.1",
+    "numpy": "2.4.6"
+  },
+  "platform": "Linux-6.8.12-20-pve-x86_64-with-glibc2.43",
+  "python": "3.11.15",
+  "scope": "5 synthetic documents / 6 pages. Fixture-controlled translations, not an MT evaluation. Text-only median includes fresh document opens, excludes imports; geometry/tables measured separately. Writer wall time is one run including verification, not a fair engine speed ranking. Copying unchanged pages is not translation reconstruction.",
+  "repeat": 7,
+  "extraction": [
+    {
+      "engine": "PyMuPDF",
+      "text_extraction_median_ms": 9.448172524571419,
+      "runs_ms": [
+        9.697334840893745,
+        9.485609829425812,
+        9.447934105992317,
+        9.448172524571419,
+        9.420959278941154,
+        9.438639506697655,
+        9.619249030947685
+      ],
+      "text_probes_passed": 10,
+      "text_probes_total": 10,
+      "column_reading_order_correct": false,
+      "column_marker_positions": [
+        174,
+        329,
+        0,
+        156
+      ],
+      "character_boxes_available": true,
+      "anchor_left_x_error_pt": 0.0,
+      "uri_links_extracted": 2,
+      "table_cells_correct": true,
+      "table_ms": 12.242896482348442,
+      "table": [
+        [
+          "Engine",
+          "Status"
+        ],
+        [
+          "Bergamot",
+          "Ready"
+        ]
+      ]
+    },
+    {
+      "engine": "pdfplumber",
+      "text_extraction_median_ms": 73.97418282926083,
+      "runs_ms": [
+        72.62630760669708,
+        90.26984125375748,
+        68.97403113543987,
+        70.8836205303669,
+        74.78965446352959,
+        73.97418282926083,
+        75.31046122312546
+      ],
+      "text_probes_passed": 9,
+      "text_probes_total": 10,
+      "column_reading_order_correct": false,
+      "column_marker_positions": [
+        0,
+        304,
+        51,
+        328
+      ],
+      "character_boxes_available": true,
+      "anchor_left_x_error_pt": 0.0,
+      "uri_links_extracted": 2,
+      "table_cells_correct": true,
+      "table_ms": 25.745999068021774,
+      "table": [
+        [
+          "Engine",
+          "Status"
+        ],
+        [
+          "Bergamot",
+          "Ready"
+        ]
+      ]
+    },
+    {
+      "engine": "pdfminer.six",
+      "text_extraction_median_ms": 45.97867280244827,
+      "runs_ms": [
+        45.97867280244827,
+        46.02005146443844,
+        45.943260192871094,
+        45.910365879535675,
+        45.96505127847195,
+        46.1024921387434,
+        46.14574462175369
+      ],
+      "text_probes_passed": 10,
+      "text_probes_total": 10,
+      "column_reading_order_correct": true,
+      "column_marker_positions": [
+        0,
+        155,
+        172,
+        328
+      ],
+      "character_boxes_available": true,
+      "anchor_left_x_error_pt": 0.0,
+      "uri_links_extracted": null,
+      "table_cells_correct": null,
+      "table_ms": null,
+      "table": null
+    },
+    {
+      "engine": "pypdf",
+      "text_extraction_median_ms": 10.119948536157608,
+      "runs_ms": [
+        10.354273021221161,
+        10.158095508813858,
+        10.109789669513702,
+        10.10485552251339,
+        10.119948536157608,
+        10.09245216846466,
+        10.187743231654167
+      ],
+      "text_probes_passed": 10,
+      "text_probes_total": 10,
+      "column_reading_order_correct": false,
+      "column_marker_positions": [
+        0,
+        390,
+        78,
+        468
+      ],
+      "character_boxes_available": false,
+      "anchor_left_x_error_pt": null,
+      "uri_links_extracted": 2,
+      "table_cells_correct": null,
+      "table_ms": null,
+      "table": null
+    },
+    {
+      "engine": "pypdfium2",
+      "text_extraction_median_ms": 5.386825650930405,
+      "runs_ms": [
+        5.513647571206093,
+        5.386825650930405,
+        5.403945222496986,
+        5.370562896132469,
+        5.255751311779022,
+        5.350198596715927,
+        5.428468808531761
+      ],
+      "text_probes_passed": 10,
+      "text_probes_total": 10,
+      "column_reading_order_correct": false,
+      "column_marker_positions": [
+        178,
+        336,
+        0,
+        159
+      ],
+      "character_boxes_available": true,
+      "anchor_left_x_error_pt": 0.0,
+      "uri_links_extracted": null,
+      "table_cells_correct": null,
+      "table_ms": null,
+      "table": null
+    }
+  ],
+  "copying": [
+    {
+      "engine": "PyMuPDF",
+      "elapsed_ms": 84.14814807474613,
+      "cases": [
+        {
+          "case": "mixed",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 1,
+            "pdfium_changed_channel_percent": [
+              0.0,
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "columns",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "graphics",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "dense",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "rotated-page",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        }
+      ]
+    },
+    {
+      "engine": "pypdf",
+      "elapsed_ms": 86.94651164114475,
+      "cases": [
+        {
+          "case": "mixed",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 1,
+            "pdfium_changed_channel_percent": [
+              0.0,
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "columns",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "graphics",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "dense",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "rotated-page",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        }
+      ]
+    },
+    {
+      "engine": "pypdfium2",
+      "elapsed_ms": 83.90359207987785,
+      "cases": [
+        {
+          "case": "mixed",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 1,
+            "pdfium_changed_channel_percent": [
+              0.0,
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "columns",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "graphics",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "dense",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        },
+        {
+          "case": "rotated-page",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": false,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.0
+            ],
+            "uri_link_count_preserved": true
+          }
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "engine": "NER current",
+      "cases": [
+        {
+          "case": "mixed",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              8.393884015594542,
+              4.042763157894737
+            ],
+            "minimum_font_size": 8.835200309753418,
+            "font_floor_violating_blocks": 0,
+            "mixed_layout": {
+              "url_bytes_present": false,
+              "inline_code_bytes_present": true,
+              "code_lines_present": [
+                true,
+                true,
+                true
+              ],
+              "protected_characters_same_coordinates": {
+                "code_block": true,
+                "inline_code": false,
+                "wrapped_url": false
+              },
+              "links_count": 5,
+              "link_uris": [
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en"
+              ],
+              "all_links_overlap_visible_text": true,
+              "background_pixel_before": [
+                224,
+                239,
+                255
+              ],
+              "background_pixel_after": [
+                224,
+                239,
+                255
+              ],
+              "background_preserved": true,
+              "rotated_line_directions": [
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ]
+              ],
+              "column_horizontal_bounds_respected": {
+                "right_column": true,
+                "left_column": true
+              },
+              "short_heading_translated": true,
+              "flow_inline_code_bytes_present": true,
+              "styled_heading_colored": false,
+              "styled_heading_center_x": 267.26000213623047,
+              "short_list_line_count": 3,
+              "short_list_same_line_structure": false,
+              "minimum_font_size": 8.835200309753418,
+              "styled_heading_spans": [
+                {
+                  "size": 26.0,
+                  "flags": 0,
+                  "bidi": 0,
+                  "char_flags": 16,
+                  "font": "Droid Sans Fallback Regular",
+                  "color": 0,
+                  "alpha": 230,
+                  "ascender": 1.0420000553131104,
+                  "descender": -0.26499998569488525,
+                  "text": "文書翻訳のレイアウト制御",
+                  "origin": [
+                    111.25999450683594,
+                    62.1171875
+                  ],
+                  "bbox": [
+                    111.25999450683594,
+                    35.025184631347656,
+                    423.260009765625,
+                    69.00718688964844
+                  ]
+                }
+              ],
+              "url_characters_present_ignoring_wrap": true,
+              "uri_targets_unchanged": true
+            },
+            "translated_table_cells_correct": 2,
+            "translated_table_cells_total": 4
+          },
+          "elapsed_ms": 545.4654954373837,
+          "bytes": 1779977
+        },
+        {
+          "case": "columns",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              3.2730263157894735
+            ],
+            "minimum_font_size": 9.0,
+            "font_floor_violating_blocks": 0
+          },
+          "elapsed_ms": 251.23737379908562,
+          "bytes": 1703735
+        },
+        {
+          "case": "graphics",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              2.114339668615984
+            ],
+            "minimum_font_size": 7.5,
+            "font_floor_violating_blocks": 0,
+            "image_pixels_exact": true,
+            "vector_pixels_exact": true
+          },
+          "elapsed_ms": 263.69889080524445,
+          "bytes": 1706486
+        },
+        {
+          "case": "dense",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.5712719298245614
+            ],
+            "minimum_font_size": 1.5,
+            "font_floor_violating_blocks": 1
+          },
+          "elapsed_ms": 428.24240401387215,
+          "bytes": 1703654
+        },
+        {
+          "case": "rotated-page",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              1.2914839181286548
+            ],
+            "minimum_font_size": 8.5,
+            "font_floor_violating_blocks": 0
+          },
+          "elapsed_ms": 241.00199155509472,
+          "bytes": 1703729
+        }
+      ]
+    },
+    {
+      "engine": "PyMuPDF HTML experiment",
+      "cases": [
+        {
+          "case": "mixed",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              8.180494639376217,
+              3.800804093567251
+            ],
+            "minimum_font_size": 8.835200309753418,
+            "font_floor_violating_blocks": 0,
+            "mixed_layout": {
+              "url_bytes_present": false,
+              "inline_code_bytes_present": true,
+              "code_lines_present": [
+                true,
+                true,
+                true
+              ],
+              "protected_characters_same_coordinates": {
+                "code_block": true,
+                "inline_code": false,
+                "wrapped_url": false
+              },
+              "links_count": 5,
+              "link_uris": [
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en"
+              ],
+              "all_links_overlap_visible_text": true,
+              "background_pixel_before": [
+                224,
+                239,
+                255
+              ],
+              "background_pixel_after": [
+                224,
+                239,
+                255
+              ],
+              "background_preserved": true,
+              "rotated_line_directions": [
+                [
+                  0.0,
+                  -1.0
+                ]
+              ],
+              "column_horizontal_bounds_respected": {
+                "right_column": true,
+                "left_column": true
+              },
+              "short_heading_translated": true,
+              "flow_inline_code_bytes_present": true,
+              "styled_heading_colored": true,
+              "styled_heading_center_x": 359.9999084472656,
+              "short_list_line_count": 3,
+              "short_list_same_line_structure": false,
+              "minimum_font_size": 8.835200309753418,
+              "styled_heading_spans": [
+                {
+                  "size": 20.0,
+                  "flags": 0,
+                  "bidi": 0,
+                  "char_flags": 16,
+                  "font": "Droid Sans Fallback Regular",
+                  "color": 1720460,
+                  "alpha": 255,
+                  "ascender": 1.0420000553131104,
+                  "descender": -0.26499998569488525,
+                  "text": "文書翻訳のレイアウト制御",
+                  "origin": [
+                    239.99990844726562,
+                    52.000038146972656
+                  ],
+                  "bbox": [
+                    239.99990844726562,
+                    31.160037994384766,
+                    479.9999084472656,
+                    57.3000373840332
+                  ]
+                }
+              ],
+              "url_characters_present_ignoring_wrap": true,
+              "uri_targets_unchanged": true
+            },
+            "translated_table_cells_correct": 2,
+            "translated_table_cells_total": 4
+          },
+          "elapsed_ms": 609.7472403198481,
+          "bytes": 1787179
+        },
+        {
+          "case": "columns",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              3.55391081871345
+            ],
+            "minimum_font_size": 9.503520011901855,
+            "font_floor_violating_blocks": 0
+          },
+          "elapsed_ms": 268.00174079835415,
+          "bytes": 1705979
+        },
+        {
+          "case": "graphics",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              1.964059454191033
+            ],
+            "minimum_font_size": 6.0,
+            "font_floor_violating_blocks": 0,
+            "image_pixels_exact": true,
+            "vector_pixels_exact": true
+          },
+          "elapsed_ms": 293.47523115575314,
+          "bytes": 1708282
+        },
+        {
+          "case": "dense",
+          "status": "rejected",
+          "error": "ValueError: p1-b1-u1: overflow above readable font floor",
+          "elapsed_ms": 3.0466243624687195
+        },
+        {
+          "case": "rotated-page",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              1.304641812865497
+            ],
+            "minimum_font_size": 8.727239608764648,
+            "font_floor_violating_blocks": 0
+          },
+          "elapsed_ms": 251.45960040390491,
+          "bytes": 1705072
+        }
+      ]
+    },
+    {
+      "engine": "ReportLab + pypdf overlay",
+      "cases": [
+        {
+          "case": "mixed",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 1,
+            "pdfium_changed_channel_percent": [
+              9.56603313840156,
+              3.673367446393762
+            ],
+            "minimum_font_size": 6.327280044555664,
+            "font_floor_violating_blocks": 2,
+            "mixed_layout": {
+              "url_bytes_present": true,
+              "inline_code_bytes_present": true,
+              "code_lines_present": [
+                true,
+                true,
+                true
+              ],
+              "protected_characters_same_coordinates": {
+                "code_block": true,
+                "inline_code": false,
+                "wrapped_url": false
+              },
+              "links_count": 2,
+              "link_uris": [
+                "https://docs.example.org/translation/local-models?lang=en",
+                "https://docs.example.org/translation/local-models?lang=en"
+              ],
+              "all_links_overlap_visible_text": true,
+              "background_pixel_before": [
+                224,
+                239,
+                255
+              ],
+              "background_pixel_after": [
+                255,
+                255,
+                255
+              ],
+              "background_preserved": false,
+              "rotated_line_directions": [
+                [
+                  0.0,
+                  -1.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.0
+                ]
+              ],
+              "column_horizontal_bounds_respected": {
+                "right_column": true,
+                "left_column": true
+              },
+              "short_heading_translated": true,
+              "flow_inline_code_bytes_present": true,
+              "styled_heading_colored": false,
+              "styled_heading_center_x": 359.9999084472656,
+              "short_list_line_count": 6,
+              "short_list_same_line_structure": false,
+              "minimum_font_size": 6.327280044555664,
+              "styled_heading_spans": [
+                {
+                  "size": 20.0,
+                  "flags": 16,
+                  "bidi": 0,
+                  "char_flags": 24,
+                  "font": "Helvetica-Bold",
+                  "color": 1720460,
+                  "alpha": 255,
+                  "ascender": 1.0700000524520874,
+                  "descender": -0.3070000112056732,
+                  "text": "Detailed layout control for local document translation",
+                  "origin": [
+                    106.05999755859375,
+                    56.4000244140625
+                  ],
+                  "bbox": [
+                    106.05999755859375,
+                    35.000022888183594,
+                    613.9398193359375,
+                    62.54002380371094
+                  ]
+                },
+                {
+                  "size": 20.0,
+                  "flags": 0,
+                  "bidi": 0,
+                  "char_flags": 16,
+                  "font": "Droid-Sans-Fallback",
+                  "color": 0,
+                  "alpha": 255,
+                  "ascender": 0.765625,
+                  "descender": -0.23828120529651642,
+                  "text": "文書翻訳のレイアウト制御",
+                  "origin": [
+                    106.05999755859375,
+                    55.0
+                  ],
+                  "bbox": [
+                    106.05999755859375,
+                    39.6875,
+                    346.05999755859375,
+                    59.765625
+                  ]
+                }
+              ],
+              "url_characters_present_ignoring_wrap": true,
+              "uri_targets_unchanged": true
+            },
+            "translated_table_cells_correct": 2,
+            "translated_table_cells_total": 4
+          },
+          "elapsed_ms": 332.7752947807312,
+          "bytes": 159940
+        },
+        {
+          "case": "columns",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              3.367324561403509
+            ],
+            "minimum_font_size": 7.494551658630371,
+            "font_floor_violating_blocks": 1
+          },
+          "elapsed_ms": 106.72923177480698,
+          "bytes": 14148
+        },
+        {
+          "case": "graphics",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              1.8891934697855752
+            ],
+            "minimum_font_size": 6.0,
+            "font_floor_violating_blocks": 0,
+            "image_pixels_exact": true,
+            "vector_pixels_exact": true
+          },
+          "elapsed_ms": 117.55798012018204,
+          "bytes": 24019
+        },
+        {
+          "case": "dense",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              0.6544225146198831
+            ],
+            "minimum_font_size": 1.769484043121338,
+            "font_floor_violating_blocks": 1
+          },
+          "elapsed_ms": 105.16510531306267,
+          "bytes": 12969
+        },
+        {
+          "case": "rotated-page",
+          "status": "written",
+          "metrics": {
+            "page_boxes_preserved": true,
+            "japanese_text_extractable": true,
+            "unremoved_original_paragraph_pages": 0,
+            "pdfium_changed_channel_percent": [
+              1.1876827485380117
+            ],
+            "minimum_font_size": 7.494539737701416,
+            "font_floor_violating_blocks": 1
+          },
+          "elapsed_ms": 77.30372063815594,
+          "bytes": 13772
+        }
+      ]
+    }
+  ]
+}
