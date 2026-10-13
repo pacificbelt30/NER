@@ -6,6 +6,7 @@ import pytest
 
 import api_server
 from ner.errors import ConfigurationError, PDFError, TranslationCancelled, TranslationError
+from ner.jobs import public_error
 from ner.paper_extract import PaperExtract
 from ner.textra_api import TextraConnection
 from ner.text_blocks import (LiteralRange, TranslationBlock, canonical_text, model_text,
@@ -232,6 +233,16 @@ def test_protected_output_error_leaves_original_and_existing_output_untouched(tm
     assert source.read_bytes() == source_bytes and output.read_bytes() == b'existing artifact'
 
 
+def test_api_reports_protected_content_failure_and_chunk_progress(tmp_path, recorded):
+    assert public_error(TranslationError('Protected token mismatch'))['code'] == 'PROTECTED_CONTENT_INVALID'
+    make_protected_pdf(tmp_path / 'input.pdf')
+    api_server.translation_job_worker(str(tmp_path), {'PRIORITY': 'INDEX', 'INDEX': {'CHUNK_CHARS': 30}}, 'translated')
+    import json
+    progress = json.loads((tmp_path / 'progress.json').read_text())
+    assert progress['stage'] == 'done'
+    assert progress['completed_blocks'] == progress['total_blocks']
+    assert progress['completed_chunks'] == progress['total_chunks'] == 0
+    assert (tmp_path / 'input_new.pdf').is_file()
 
 
 def test_single_line_break_does_not_merge_english_words(tmp_path):

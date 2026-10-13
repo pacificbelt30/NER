@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="英語のPDFを日本語へ。原文の構成を保ちながら翻訳し、並べて読み比べられます。"
+    />
+    <title>NER — PDFを、もっと読みやすく。</title>
+    <link rel="stylesheet" href="/assets/style.css" />
+    <script src="/assets/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へ移動</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="NER ホーム"
+        ><span class="brand-mark" aria-hidden="true">N</span> NER
+        <span class="brand-caption">PDF TRANSLATOR</span></a
+      >
+      <span class="language-label"
+        >English <span aria-hidden="true">→</span> 日本語</span
+      >
+    </header>
+    <main id="main">
+      <section class="intro">
+        <p class="eyebrow">READ BEYOND THE LANGUAGE</p>
+        <h1>PDFを、<span>もっと読みやすく。</span></h1>
+        <p class="intro-copy">
+          英語の論文や資料を、日本語で。<br />元のページ構成を保ちながら、原文と訳文を読み比べられます。
+        </p>
+      </section>
+      <section class="workbench" aria-label="PDF翻訳">
+        <form id="translate-form" novalidate>
+          <div class="section-heading">
+            <span class="step-number">01</span>
+            <h2>翻訳するPDF</h2>
+            <span class="muted">1ファイルずつ</span>
+          </div>
+          <label class="dropzone" id="dropzone" for="pdf-file">
+            <svg
+              class="document-icon"
+              viewBox="0 0 48 48"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M14 5h14l8 8v28H14V5Z"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+              <path
+                d="M28 5v9h8M20 22h10M20 27h10M20 32h7"
+                stroke="currentColor"
+                stroke-width="1.7"
+              />
+              <path d="M9 12v30h22" stroke="currentColor" stroke-width="1.4" />
+            </svg>
+            <strong id="file-name">PDFをここにドロップ</strong>
+            <span id="file-description">またはクリックしてファイルを選択</span>
+            <span class="file-rule" id="file-rule">PDF · 最大50 MiB</span>
+            <input
+              type="file"
+              id="pdf-file"
+              name="file"
+              accept=".pdf,application/pdf"
+              aria-label="翻訳するPDFを選択"
+              aria-describedby="file-rule form-error"
+            />
+          </label>
+          <div class="file-actions" id="file-actions" hidden>
+            <button type="button" class="text-button" id="preview-original">
+              原文を確認</button
+            ><button type="button" class="text-button" id="remove-file">
+              ファイルを変更
+            </button>
+          </div>
+          <div class="settings">
+            <div>
+              <label class="field-label" for="backend"
+                ><span class="step-number">02</span>翻訳方式</label
+              >
+              <select id="backend" name="backend" disabled>
+                <option>設定を確認しています…</option>
+              </select>
+              <p id="backend-note" class="field-note">
+                ローカル翻訳とオンライン翻訳を選べます。
+              </p>
+            </div>
+            <fieldset>
+              <legend class="field-label">受け取るPDF</legend>
+              <label class="radio-option"
+                ><input type="radio" name="output" value="comparison" checked />
+                訳文 ＋ 原文との比較用PDF</label
+              >
+              <label class="radio-option"
+                ><input type="radio" name="output" value="translated" />
+                訳文PDFのみ</label
+              >
+            </fieldset>
+          </div>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <p class="setup-message" id="setup-message" hidden></p>
+          <button class="text-button" type="button" id="refresh-settings">
+            翻訳方式の設定を再確認
+          </button>
+          <button
+            class="primary-button"
+            id="start-button"
+            type="submit"
+            disabled
+          >
+            <span>日本語に翻訳する</span><span aria-hidden="true">↗</span>
+          </button>
+          <p class="upload-note">
+            文字を選択できる英語PDFに対応しています。スキャン画像は事前に文字認識（OCR）が必要です。
+          </p>
+        </form>
+        <aside class="reading-note">
+          <span class="note-symbol" aria-hidden="true">Aa</span>
+          <h2>読める形で、<br />手元に残す。</h2>
+          <ul>
+            <li>図表やページ構成を保ったPDF</li>
+            <li>原文と訳文を交互に並べた比較用PDF</li>
+            <li>進捗を確認しながら待てる翻訳</li>
+          </ul>
+          <p>
+            結果は完了後1時間保存されます。<br />必要なPDFをダウンロードしてください。
+          </p>
+        </aside>
+      </section>
+      <section
+        class="status-card"
+        id="status-card"
+        hidden
+        aria-labelledby="status-title"
+      >
+        <div class="status-top">
+          <div aria-live="polite" aria-atomic="true">
+            <p class="eyebrow" id="status-label">TRANSLATING</p>
+            <h2 id="status-title">翻訳しています</h2>
+          </div>
+          <button class="secondary-button" id="cancel-button" type="button">
+            翻訳を停止
+          </button>
+        </div>
+        <p id="status-filename" class="status-filename"></p>
+        <div
+          class="progress-track"
+          id="progress-track"
+          role="progressbar"
+          aria-label="翻訳の進捗"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <span id="progress-fill"></span>
+        </div>
+        <div class="progress-meta">
+          <p id="progress-detail">本文を確認しています</p>
+          <span id="progress-percent"></span>
+        </div>
+        <p
+          class="connection-note"
+          id="connection-note"
+          role="status"
+          hidden
+        ></p>
+        <p class="status-hint" id="status-hint">
+          このページを開き直しても、処理中の翻訳を確認できます。
+        </p>
+        <div class="status-actions">
+          <button
+            class="secondary-button"
+            id="retry-button"
+            type="button"
+            hidden
+          >
+            同じPDFで再試行</button
+          ><button
+            class="text-button"
+            id="new-file-button"
+            type="button"
+            hidden
+          >
+            別のPDFを翻訳する
+          </button>
+        </div>
+      </section>
+      <section
+        class="results"
+        id="results"
+        hidden
+        aria-labelledby="results-title"
+      >
+        <div class="result-heading">
+          <div>
+            <p class="eyebrow">READY TO READ</p>
+            <h2 id="results-title">翻訳したPDFを読む</h2>
+            <p id="expiry-note" class="muted"></p>
+          </div>
+          <div class="download-actions">
+            <a
+              class="primary-button compact"
+              id="download-translated"
+              href="#"
+              download
+              >訳文PDFを保存 ↓</a
+            ><a
+              class="secondary-button"
+              id="download-comparison"
+              href="#"
+              download
+              >比較用PDFを保存 ↓</a
+            >
+          </div>
+        </div>
+        <div class="preview-toolbar" aria-label="PDF表示の操作">
+          <button
+            type="button"
+            class="secondary-button"
+            id="previous-page"
+            aria-label="前のページ"
+          >
+            ← 前へ
+          </button>
+          <span id="page-position" role="status">1 / 1 ページ</span>
+          <button
+            type="button"
+            class="secondary-button"
+            id="next-page"
+            aria-label="次のページ"
+          >
+            次へ →
+          </button>
+          <label for="preview-zoom">拡大率</label>
+          <select id="preview-zoom">
+            <option value="100">100%</option>
+            <option value="150">150%</option>
+            <option value="200">200%</option>
+          </select>
+        </div>
+        <p id="preview-status" class="muted" role="status"></p>
+        <div class="pdf-grid">
+          <div class="pdf-pane">
+            <div class="pdf-label">
+              原文
+              <a id="open-original" target="_blank" rel="noopener"
+                >別タブで開く ↗</a
+              >
+            </div>
+            <div class="page-scroll">
+              <img
+                id="original-frame"
+                class="page-image"
+                alt="原文PDFのページ"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div class="pdf-pane">
+            <div class="pdf-label">
+              日本語訳
+              <a id="open-translated" target="_blank" rel="noopener"
+                >別タブで開く ↗</a
+              >
+            </div>
+            <div class="page-scroll">
+              <img
+                id="translated-frame"
+                class="page-image"
+                alt="日本語の翻訳PDFのページ"
+                decoding="async"
+              />
+            </div>
+          </div>
+        </div>
+        <p class="viewer-note">
+          PDFが表示されない場合は、別タブで開くかダウンロードしてください。訳文は原文と照らし合わせてご確認ください。
+        </p>
+      </section>
+      <section
+        id="local-preview"
+        class="local-preview"
+        hidden
+        aria-labelledby="local-preview-title"
+      >
+        <div class="result-heading">
+          <h2 id="local-preview-title">選択した原文PDF</h2>
+          <a
+            id="open-local-original"
+            class="text-button"
+            target="_blank"
+            rel="noopener"
+            >別タブで開く ↗</a
+          >
+          <button type="button" class="text-button" id="close-preview">
+            閉じる
+          </button>
+        </div>
+        <iframe id="local-frame" title="選択した原文PDFのプレビュー"></iframe>
+      </section>
+    </main>
+    <footer>
+      <span class="footer-brand">NER</span><span>Not Enough Readable.</span
+      ><a href="/docs" target="_blank" rel="noopener">APIリファレンス ↗</a>
+    </footer>
+  </body>
+</html>

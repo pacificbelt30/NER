@@ -339,3 +339,67 @@ def test_text_translation_keeps_unterminated_last_block(tmp_path, monkeypatch, s
         assert '訳文 last' in block.translate()
         block.save(tmp_path / 'translated.txt')
     assert '訳文 last' in (tmp_path / 'translated.txt').read_text()
+
+
+@pytest.fixture
+def api(monkeypatch, tmp_path):
+    monkeypatch.setattr(api_server, 'base', str(tmp_path / 'uploads'))
+    with TestClient(api_server.app) as client:
+        yield client
+
+
+def test_api_real_process_returns_pdf_and_cleans_workspace(api, tmp_path):
+    data = pdf_bytes()
+    response = api.post('/return_origin_file', files={'file': ('../paper.pdf', data, 'application/pdf')})
+    assert response.status_code == 200
+    assert response.content == data
+    assert list((tmp_path / 'uploads').iterdir()) == []
+    assert not (tmp_path / 'paper.pdf').exists()
+
+
+@pytest.mark.parametrize('filename,content,status', [
+    ('bad.txt', b'hello', 415), ('empty.pdf', b'', 400), ('broken.pdf', b'broken', 400),
+])
+def test_api_rejects_invalid_uploads_and_cleans_up(api, tmp_path, filename, content, status):
+    response = api.post('/return_origin_file', files={'file': (filename, content)})
+    assert response.status_code == status
+    assert not (tmp_path / 'uploads').exists() or not list((tmp_path / 'uploads').iterdir())
+
+
+def test_api_upload_limit_and_unimplemented_direction(api, monkeypatch):
+    monkeypatch.setattr(api_server, 'MAX_UPLOAD_BYTES', 8)
+    assert api.post('/return_origin_file', files={'file': ('large.pdf', b'123456789')}).status_code == 413
+    assert api.post('/return_translated_file_jaen', files={'file': ('paper.pdf', b'data')}).status_code == 501
+
+
+def test_api_backend_failure_is_502_and_does_not_leave_files(api, tmp_path, monkeypatch):
+    async def fail(*args):
+        raise TranslationError('temporary translation failure')
+    monkeypatch.setattr(api_server, 'run_pdf_job', fail)
+    response = api.post('/return_translated_file', files={'file': ('paper.pdf', pdf_bytes())})
+    assert response.status_code == 502
+    assert not list((tmp_path / 'uploads').iterdir())
+
+
+def test_api_same_filename_requests_are_isolated_and_nonblocking(api, tmp_path, monkeypatch):
+    paths = []
+    started = asyncio.Event()
+    async def slow_job(filename, translate):
+        paths.append(filename)
+        if len(paths) == 2:
+            started.set()
+        await asyncio.wait_for(started.wait(), 2)
+        return filename
+    monkeypatch.setattr(api_server, 'run_pdf_job', slow_job)
+    import httpx
+    async def requests():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=api_server.app),
+                                    base_url='http://test') as client:
+            return await asyncio.gather(*[
+                client.post('/return_origin_file', files={'file': ('paper.pdf', pdf_bytes())})
+                for _ in range(2)
+            ])
+    responses = asyncio.run(requests())
+    assert all(response.status_code == 200 for response in responses)
+    assert len(set(paths)) == 2
+    assert not list((tmp_path / 'uploads').iterdir())
