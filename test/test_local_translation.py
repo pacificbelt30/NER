@@ -10,6 +10,7 @@ import yaml
 
 from ner import TextraConnection
 from ner.local_translators import BergamotTranslator, IndexTranslator
+from ner.translation import TranslationService
 
 
 @pytest.fixture
@@ -141,3 +142,64 @@ def make_pdf(path):
     )
     doc.save(path)
     doc.close()
+
+
+def test_pdf_translation_uses_index_without_textra_or_nltk(tmp_path, monkeypatch, index_server):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'config.yml').write_text(yaml.safe_dump({
+        'PRIORITY': 'INDEX', 'INDEX': {'BASE_URL': index_server.url},
+    }))
+    source = tmp_path / 'paper.pdf'
+    make_pdf(source)
+    connection = TextraConnection(str(source))
+    connection.get_pdf_info()
+    assert connection.print_pdf_info() == 1
+    connection.post_page()
+    connection.insert()
+    with fitz.open(tmp_path / 'paper_new.pdf') as output:
+        assert output.page_count == 1
+        assert 'これは日本語の翻訳です。' in output[0].get_text().replace('\n', '')
+    with fitz.open(source) as original:
+        assert 'This research paper' in original[0].get_text()
+    assert len(index_server.requests) == 1
+
+
+def test_local_failure_does_not_create_successful_pdf(tmp_path, monkeypatch, index_server):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'config.yml').write_text(yaml.safe_dump({
+        'PRIORITY': 'INDEX', 'INDEX': {'BASE_URL': index_server.url},
+    }))
+    source = tmp_path / 'paper.pdf'
+    make_pdf(source)
+    index_server.finish_reason = 'length'
+    connection = TextraConnection(str(source))
+    connection.get_pdf_info()
+    with pytest.raises(RuntimeError, match='INDEX translation failed on page 1'):
+        connection.post_page()
+    assert not (tmp_path / 'paper_new.pdf').exists()
+
+
+def test_google_initialization_does_not_require_textra(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'config.yml').write_text(yaml.safe_dump({
+        'PRIORITY': 'GOOGLE', 'GOOGLE': {'URL': 'https://example.com'},
+    }))
+    source = tmp_path / 'paper.pdf'
+    make_pdf(source)
+    connection = TextraConnection(str(source))
+    assert connection.local_translator is None
+    assert not hasattr(connection, 'consumer')
+
+
+def test_textra_initialization_remains_available(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / 'config.yml').write_text(yaml.safe_dump({
+        'PRIORITY': 'TEXTRA', 'TEXTRA': {
+            'NAME': 'test', 'KEY': 'test-key', 'SECRET': 'test-secret', 'URL': 'https://example.com',
+        },
+    }))
+    source = tmp_path / 'paper.pdf'
+    make_pdf(source)
+    connection = TextraConnection(str(source))
+    assert connection.params['name'] == 'test'
+    assert connection.consumer is not None

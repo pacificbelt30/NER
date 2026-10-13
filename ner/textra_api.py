@@ -1,159 +1,86 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-"""
-Sample Python3 OAuthRequest
-"""
+"""PDF translation workflow; TextraConnection remains the public compatibility name."""
 
-import sys
-import requests as req
-import json
-import time
-from requests_oauthlib import OAuth1
-from xml.etree.ElementTree import *
-from .yml_load import config_load
+from .errors import PDFError, TranslationCancelled, TranslationError
 from .paper_extract import PaperExtract
+from .translation import TranslationService
+from .yml_load import config_load
 
-priority = ['GOOGLE','TEXTRA']
+
 class TextraConnection:
-    def __init__(self,path,priority='GOOGLE') -> None:
-        conf = config_load('./config.yml')
-        self.priority = priority
-        self.DEBUG = True
-        if 'PRIORITY' in conf:
-            self.priority = conf['PRIORITY']
-        if 'TEXTRA' in conf:
-            self.NNAME = conf['TEXTRA']['NAME']
-            self.NKEY = conf['TEXTRA']['KEY']
-            self.NSECRET = conf['TEXTRA']['SECRET']
-            self.NURL = conf['TEXTRA']['URL']
-        if 'GOOGLE' in conf:
-            self.GURL = conf['GOOGLE']['URL']
-        if 'FONT' in conf:
-            self.font = conf['FONT']
-        else:
-            self.font = ''
-        self.pe = PaperExtract(path=path,font=self.font)
+    def __init__(self, path, priority='GOOGLE', *, config=None):
+        self.config = config_load('./config.yml') if config is None else config
+        self.service = TranslationService(self.config, priority)
+        self.priority = self.service.name
+        self.local_translator = (self.service.backend
+                                 if self.priority in ('INDEX', 'BERGAMOT') else None)
+        if self.priority == 'TEXTRA':
+            self.consumer = self.service.backend.auth
+            self.params = self.service.backend.params
+        try:
+            self.pe = PaperExtract(path=path, font=self.config.get('FONT', ''))
+        except Exception:
+            self.service.close()
+            raise
+        self.page_array = None
 
-        self.consumer = OAuth1(self.NKEY , self.NSECRET)
-        TEXT = ''
-        self.params = {
-            'key': self.NKEY,
-            'name': self.NNAME,
-            'type': 'json',
-            'text': TEXT,
-        }    # その他のパラメータについては、各APIのリクエストパラメータに従って設定してください。
+    def _post_block(self, txt, sleeptime=None):
+        # Retain the old entry point; backend configuration now controls pacing.
+        return self.service.translate(txt)
 
     def get_translation_service_func(self):
-        all = {
-            'GOOGLE': self._post_block_google,
-            'TEXTRA': self._post_block_nict,
-        }
-        return all
+        return {self.priority: self._post_block}
 
-    def _post_block(self,txt,sleeptime=5.0):
-        return self.get_translation_service_func()[self.priority](txt,sleeptime)
-    
     def print_pdf_info(self):
-        count = 0
-        for i in range(self.pe.page_count):
-            count += len(self.pe.get_page_text_array(i))
+        count = sum(map(len, self.pe.pages_info))
         print('Num of Blocks = Total requests:', count)
         return count
 
     def get_pdf_info(self):
         self.pe.extract_textinfo()
-        self.pe.fill_all_blocks()
 
-    def post_page(self):
-        page_array = []
-        for i in range(self.pe.page_count):
-            page_array.append([])
-            for txt in self.pe.get_page_text_array(i):
-                print(i)
+    def post_page(self, on_progress=None):
+        self.page_array = None
+        self.pe._require_extracted()
+        if not any(self.pe.pages_info):
+            raise PDFError('No translatable text found. Scanned PDFs need OCR before translation.')
+        total = sum(map(len, self.pe.pages_info))
+        completed = 0
+        if on_progress:
+            on_progress(completed, total, 0, self.pe.page_count)
+        translated_pages = []
+        for page_num in range(self.pe.page_count):
+            translated_blocks = []
+            for block_num, text in enumerate(self.pe.get_page_text_array(page_num, is_split=False)):
                 try:
-                    load = self._post_block(txt)
-                    # page_array[i].append(load['resultset']['result']['text'])
-                    page_array[i].append(load)
-
-                except Exception as e:
-                    print('=== Error ===')
-                    print('type:' + str(type(e)))
-                    print('args:' + str(e.args))
-                    print('e:' + str(e))
-                    try:
-                        print('RE-POST:')
-                        load = self._post_block(txt)
-                        # page_array[i].append(load['resultset']['result']['text'])
-                        page_array[i].append(load)
-                    except Exception as ree:
-                        print('=== Error ===')
-                        print('Re:type:' + str(type(ree)))
-                        print('Re:args:' + str(ree.args))
-                        print('Re:e:' + str(ree))
-                        page_array[i].append(txt)
-                    # 再送したい
-        self.page_array = page_array
-
-    def _post_block_google(self,txt,sleeptime=3.0):
-        res = ""
-        time.sleep(sleeptime)
-        # if (form == "google"):
-        if True:
-            params = {
-                'client': 'gtx',
-                'sl': 'en',
-                'tl': 'ja',
-                'dt': 't',
-                'q': txt,
-            }
-            if self.DEBUG: print("req>>" , txt)
-            res = req.get(self.GURL, params=params)
-            res.encoding = 'utf-8'
-            load = res.json()
-            txt = ''
-            for k in range(len(load[0])):
-                txt += load[0][k][0]
-            # print(txt.replace('\n','').replace(' ',''))
-            return txt.replace(' ','')
-
-        return "cant translete"
-
-    def _post_block_nict(self,txt,sleeptime=3.0) -> dict:
-        self.params['text'] = txt
-        if self.DEBUG: print(self.params)
-        time.sleep(sleeptime)
-        res = req.post(self.NURL , data=self.params , auth=self.consumer)
-        res.encoding = 'utf-8'
-        # print('result')
-        dump = json.dumps(res.text)
-        load = json.loads(json.loads(dump))
-
-        # NICT 上限に引っかかる場合（2023/11/02現在，n=750）
-        """
-        if load['resultset']['code'] != 200:
-            print('Bad status:', load['resultset']['code'])
-            print(load['resultset']['code'], load['resultset']['message'])
-            return ''
-        """
-
-        if self.DEBUG: print(load['resultset']['request']['text'])
-        if self.DEBUG: print(load['resultset']['result']['text'])
-        print(load['resultset']['request']['text'][0:20], '... -> ', load['resultset']['result']['text'][0:20], '...')
-
-        return load['resultset']['result']['text'].replace(' ','')
+                    translated_blocks.append(self.service.translate(text))
+                except TranslationError as exc:
+                    raise TranslationError(f'{self.priority} translation failed on page {page_num + 1}, '
+                                           f'block {block_num + 1}: {exc}') from exc
+                completed += 1
+                if on_progress:
+                    on_progress(completed, total, page_num + 1, self.pe.page_count)
+            translated_pages.append(translated_blocks)
+        self.page_array = translated_pages
 
     def insert(self):
-        for i in range(self.pe.page_count):
-            self.pe.insert_txt_from_array(i,self.page_array[i])
-        
+        if self.page_array is None or len(self.page_array) != self.pe.page_count:
+            raise TranslationError('Translate every page before writing the PDF.')
+        prepared = [self.pe.prepare_page(index, texts) for index, texts in enumerate(self.page_array)]
+        self.pe.fill_all_blocks()
+        for index, writer in enumerate(prepared):
+            if writer is not None:
+                writer.write_text(self.pe.new_doc[index], color=(0, 0, 0), opacity=0.9)
         self.pe.save()
+        return self.pe.output_path
 
-if __name__ == "__main__":
-    filename = './pdf/survey_watermark.pdf'
-    if len(sys.argv) >= 2:
-        filename = sys.argv[1]
-    tc = TextraConnection(filename)
-    tc.get_pdf_info()
-    tc.post_page()
-    tc.insert()
+    def close(self):
+        try:
+            self.pe.close()
+        finally:
+            self.service.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()

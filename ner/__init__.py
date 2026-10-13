@@ -3,3 +3,5 @@ from .combine_pdfs import CombinePDF
 from .paper_extract import PaperExtract
 from .yml_load import config_load
 from .translate_redabletxt import Block
+from .translation import TranslationService
+from .errors import ConfigurationError, PDFError, TranslationError

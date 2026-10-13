@@ -1,60 +1,59 @@
+import argparse
+from pathlib import Path
 import sys
-import os
-from ner import CombinePDF, TextraConnection
+
+from ner import CombinePDF, PaperExtract, TextraConnection
+
+
+def _parser():
+    parser = argparse.ArgumentParser(description='Translate English PDFs into Japanese.')
+    parser.add_argument('command', choices=('translate', 'combine', 'info', 'help'), nargs='?', default='help')
+    parser.add_argument('path', nargs='?', default='source.pdf')
+    return parser
+
 
 def help():
-    helptxt = """
-    this is launcher for using some NER features.
-    if you want to know feature details:
-        mner.py [subcommand] --help
+    _parser().print_help()
 
-    after translate( or combine ) subcommand toward [filename].[ext], we find [filename]_new.[ext]( or [filename]_all.[ext] ).
-    subcommands:
-        translate
-        combine
-    """
-    print(helptxt)
 
-def translate():
-    tc = pdf_info()
-    tc.post_page()
-    tc.insert()
+def translate(path='source.pdf'):
+    with TextraConnection(path) as connection:
+        connection.get_pdf_info()
+        connection.print_pdf_info()
+        connection.post_page()
+        return connection.insert()
 
-def pdf_info():
-    filename = 'source.pdf'
-    if len(sys.argv) >= 3:
-        filename = sys.argv[2]
-    tc = TextraConnection(filename)
-    tc.get_pdf_info()
-    tc.print_pdf_info()
-    return tc
 
-def combine():
-    pdf = 'source.pdf'
-    if len(sys.argv) >= 3:
-        pdf = sys.argv[2]
-    file_ext = os.path.basename(pdf).split('.')
-    dir = os.path.dirname(pdf)
-    trans_file = os.path.join(dir,f"{file_ext[0]}_new.{file_ext[1]}")
-    target_file = os.path.join(dir,f"{file_ext[0]}_all.{file_ext[1]}")
-    cpdf = CombinePDF(pdf,trans_file,target_file)
-    cpdf.combine(insert_first_page=False)
+def pdf_info(path='source.pdf'):
+    # PDF inspection does not require translation credentials or model files.
+    with PaperExtract(path) as document:
+        document.extract_textinfo()
+        count = sum(map(len, document.pages_info))
+        print(f'Pages: {document.page_count}; translatable blocks: {count}')
+        return document.meta_data
 
-def main():
-    if len(sys.argv) <= 1:
+
+def combine(path='source.pdf'):
+    original = Path(path).expanduser()
+    translated = original.with_name(original.stem + '_new' + original.suffix)
+    output = original.with_name(original.stem + '_all' + original.suffix)
+    return CombinePDF(original, translated, output).combine()
+
+
+def main(argv=None):
+    args = _parser().parse_args(argv)
+    if args.command == 'help':
         help()
-        exit(0)
+        return 0
+    try:
+        result = {'translate': translate, 'combine': combine, 'info': pdf_info}[args.command](args.path)
+        if isinstance(result, str):
+            print(result)
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f'Error: {exc}', file=sys.stderr)
+        return 1
+    return 0
 
-    match sys.argv[1]:
-        case 'translate':
-            translate()
-        case 'combine':
-            combine()
-        case 'info':
-            pdf_info()
-        case _:
-            help()
-            exit(0)
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -1,16 +1,18 @@
+from pathlib import Path
+
 import yaml
 
-def config_load(path):
-    try:
-        with open(path) as file:
-            obj = yaml.safe_load(file)
-            print(obj)
-            return obj
-    except:
-        import traceback
-        traceback.print_exc()
-        return {}
+from .errors import ConfigurationError
 
-if __name__ == "__main__":
-    config_load('./config.yml')
+
+def config_load(path):
+    path = Path(path).expanduser()
+    try:
+        with path.open(encoding='utf-8') as handle:
+            config = yaml.safe_load(handle)
+    except (OSError, yaml.YAMLError, UnicodeError) as exc:
+        raise ConfigurationError(f'Cannot read configuration: {path}') from exc
+    if not isinstance(config, dict):
+        raise ConfigurationError(f'Configuration must be a mapping: {path}')
+    return config
 

@@ -1,46 +1,41 @@
-import sys
-import os
-import json
-from ner import TextraConnection
+"""Translate separated text blocks without trying to open the text file as a PDF."""
 
-class Block():
-    def __init__(self,filename):
-        self.split_marker = '------------------------------'
-        try:
-            with open(filename,'r') as f:
-                self.txt = f.read()
-        except:
-            import traceback
-            traceback.print_exc()
-            self.txt = ''
-        self.translate_api = TextraConnection(filename)
+from pathlib import Path
+
+from .io_utils import atomic_output
+from .translation import TranslationService
+from .yml_load import config_load
+
+
+class Block:
+    split_marker = '------------------------------'
+
+    def __init__(self, filename):
+        self.txt = Path(filename).expanduser().read_text(encoding='utf-8')
         self.split_txt = self.split_array(self.txt)
+        self.translate_api = TranslationService(config_load('./config.yml'))
+        self.previous_result = None
 
-    def split_array(self,txt):
-        return txt.split(self.split_marker)[:-1]
+    def split_array(self, text):
+        return [block.strip() for block in text.split(self.split_marker) if block.strip()]
 
     def translate(self):
-        result_txt = ''
-        for txt in self.split_txt:
-            result_txt+=self.translate_api._post_block(txt)+'\n'+self.split_marker+'\n'
-        print(result_txt)
-        self.previous_result = result_txt[:-2]
-        return result_txt[:-2]
+        self.previous_result = None
+        results = [self.translate_api.translate(text) for text in self.split_txt]
+        self.previous_result = ('\n' + self.split_marker + '\n').join(results)
+        return self.previous_result
 
-    def save(self,filename):
-        try:
-            with open(filename,'w') as f:
-                print(self.previous_result,file=f)
-        except:
-            import traceback
-            traceback.print_exc()
+    def save(self, filename):
+        if self.previous_result is None:
+            raise RuntimeError('Translate the text before saving it.')
+        with atomic_output(filename) as path:
+            path.write_text(self.previous_result + '\n', encoding='utf-8')
 
-if __name__ == "__main__":
-    filename = ''
-    if len(sys.argv) >= 2:
-        filename = sys.argv[1]
-    b = Block(filename)
-    b.translate()
-    b.save('new_'+filename)
+    def close(self):
+        self.translate_api.close()
 
+    def __enter__(self):
+        return self
 
+    def __exit__(self, *args):
+        self.close()
