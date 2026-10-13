@@ -12,7 +12,7 @@ from .errors import ConfigurationError, PDFError
 from .io_utils import atomic_output
 from .text_blocks import BlockTranslation, LiteralRange, TranslationBlock, prepare_block
 from .translation_policy import translation_decision
-from .block_layout import PreparedPage, prepare_rich
+from .block_layout import MIN_FONT_SIZE, PreparedPage, prepare_rich
 from .pdf_tables import separate_table_cells
 
 
@@ -299,7 +299,8 @@ class PaperExtract:
             raise PDFError('Text block has an invalid rectangle.')
         if not math.isfinite(fontsize) or fontsize <= 0:
             raise PDFError('Text block has an invalid font size.')
-        maximum = max(1, math.floor(fontsize * 3 - 1))
+        minimum = math.ceil(MIN_FONT_SIZE * 2)
+        maximum = max(minimum, math.floor(fontsize * 2))
         max_advance = max(font.char_lengths(text.replace('\n', ''), fontsize=1), default=0)
         def fits(step):
             if step / 2 * font.ascender > rect.height:
@@ -311,9 +312,9 @@ class PaperExtract:
             return not writer.fill_textbox(rect, text, font=font, fontsize=step / 2, warn=None)
         if fits(maximum):
             return maximum / 2
-        if not fits(1):
+        if not fits(minimum):
             raise PDFError('Translation does not fit in its text block, even at the minimum font size.')
-        low, high = 1, maximum - 1
+        low, high = minimum, maximum - 1
         while low < high:
             middle = (low + high + 1) // 2
             if fits(middle):

@@ -2,12 +2,16 @@
 
 from dataclasses import dataclass
 import html
+import math
 from pathlib import Path
 
 import pymupdf as fitz
 
 from .errors import PDFError
 from .text_blocks import TOKEN
+
+
+MIN_FONT_SIZE = 1.0
 
 
 @dataclass
@@ -36,12 +40,14 @@ def prepare_rich(source_page, block, result, font_path=None):
         cursor = match.end()
     parts.append(html.escape(result.canonical_text[cursor:]).replace('\n', '<br>'))
     size = block['fontsize']
-    # Do not make tiny source footnotes smaller; ordinary text has an 8pt floor.
-    minimum = min(size, 8)
+    if not math.isfinite(size) or size <= 0:
+        raise PDFError('Text block has an invalid font size.')
+    size = max(size, MIN_FONT_SIZE)
+    minimum = MIN_FONT_SIZE
     color = block['lines'][0]['spans'][0]['color']
     css = (f'body {{margin:0; font-family:sans-serif; font-size:{size}pt; line-height:1.1; color:#{color:06x};}} '
            f"p {{margin:0; text-align:{block.get('text_align', 'left')};}} "
-           'code {font-family:monospace;} a {color:#004c99;}')
+           'code {font-family:monospace; font-size:1em;} a {color:#004c99;}')
     archive = None
     if font_path:
         path = Path(font_path)
@@ -58,9 +64,9 @@ def prepare_rich(source_page, block, result, font_path=None):
     def fits(rect):
         with fitz.open() as scratch:
             page = scratch.new_page(width=page_rect.width, height=page_rect.height)
-            spare, _ = page.insert_htmlbox(rect, plan.text, css=css, scale_low=plan.scale_low,
+            spare, scale = page.insert_htmlbox(rect, plan.text, css=css, scale_low=plan.scale_low,
                                           rotate=rotate, archive=archive)
-            return spare >= 0
+            return spare >= 0 and scale >= plan.scale_low - 1e-8
     if not fits(plan.rect):
         # Permit at most half an inch of horizontal growth into verified free space.
         # Code blocks and all other text, images, and vector strokes are obstacles.
@@ -119,9 +125,9 @@ class PreparedPage:
         if not self.writer.text_rect.is_empty:
             self.writer.write_text(page, **kwargs)
         for plan in self.rich:
-            spare, _ = page.insert_htmlbox(plan.rect, plan.text, css=plan.css, scale_low=plan.scale_low,
+            spare, scale = page.insert_htmlbox(plan.rect, plan.text, css=plan.css, scale_low=plan.scale_low,
                                           rotate=plan.rotate, archive=plan.archive)
-            if spare < 0:
+            if spare < 0 or scale < plan.scale_low - 1e-8:
                 raise PDFError('Protected translation overflow during PDF placement.')
         page = page.parent.reload_page(page)
         normalize_uri_links(page)

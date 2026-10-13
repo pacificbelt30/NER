@@ -292,15 +292,14 @@ def test_protected_inline_growth_only_uses_free_space(tmp_path, recorded, obstac
     with TextraConnection(path, config=config) as connection:
         connection.get_pdf_info()
         connection.post_page()
-        if obstacle:
-            with pytest.raises(PDFError, match='does not fit'):
-                connection.insert()
-            assert 'Call ' in connection.pe.doc[0].get_text()
-            assert not (tmp_path / 'inline_new.pdf').exists()
-        else:
-            plan = connection.pe.prepare_page(0, connection.page_array[0], connection.block_results[0])
-            assert right < plan.rich[0].rect[2] <= right + 36
-            assert connection.insert()
+        plan = connection.pe.prepare_page(0, connection.page_array[0], connection.block_results[0])
+        assert plan.rich[0].rect[2] <= right + (2 if obstacle else 36)
+        output = connection.insert()
+    with fitz.open(output) as document:
+        text = document[0].get_text()
+        assert 'translate_document_without_network' in text.replace('\n', '')
+        assert all(span['size'] >= 1 - 0.01 for block in document[0].get_text('dict')['blocks']
+                   if block['type'] == 0 for line in block['lines'] for span in line['spans'])
 
 
 def test_one_url_using_multiple_pdf_fonts_stays_one_literal():

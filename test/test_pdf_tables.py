@@ -37,7 +37,7 @@ def test_cells_translate_independently_and_preserve_other_cells(tmp_path, monkey
         assert metrics['uri_on_visible_address']
     assert path.read_bytes() == original
     with fitz.open(output) as doc:
-        assert all(span['size'] >= 8 - 0.01 for block in doc[0].get_text('dict')['blocks']
+        assert all(span['size'] >= 1 - 0.01 for block in doc[0].get_text('dict')['blocks']
                    if block['type'] == 0 for line in block['lines'] for span in line['spans'])
 
 
@@ -51,7 +51,7 @@ def test_table_overflow_fails_before_redaction_or_replacing_output(tmp_path, mon
         connection.get_pdf_info()
         before = connection.pe.doc[0].get_text('rawdict')
         connection.post_page()
-        oversized = '長い翻訳文' * 500
+        oversized = '長い翻訳文' * 5000
         connection.page_array[0][0] = oversized
         connection.block_results[0][0] = replace(connection.block_results[0][0], text=oversized,
                                                 canonical_text=oversized)
@@ -72,13 +72,13 @@ def test_merged_cell_is_one_translation_unit(tmp_path):
         assert len(multiline['lines']) == 2
 
 
-def test_unstructured_table_placement_also_enforces_readable_floor(tmp_path):
+def test_unstructured_table_placement_also_enforces_one_point_floor(tmp_path):
     source = tmp_path / 'table.pdf'
     fixture(source)
     with PaperExtract(source) as pdf:
         pdf.extract_textinfo()
         texts = [block['txt'] for block in pdf.pages_info[0]]
-        texts[0] = '長い文章' * 500
+        texts[0] = '長い文章' * 5000
         with pytest.raises(PDFError, match='does not fit'):
             pdf.prepare_page(0, texts)
 

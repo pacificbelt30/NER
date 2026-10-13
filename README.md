@@ -434,8 +434,8 @@ into a successful PDF. There is no automatic switch to an online engine.
 Protected inline runs flow with their translated paragraph using escaped HTML;
 literal URLs and linked labels get clickable hit areas in their new positions.
 The native Bergamot HTML/alignment mode is not needed. Japanese link fragments
-are normalized after insertion. Protected layouts have an 8pt floor (or the
-original size for smaller source text) and may grow right by at most 36pt after
+are normalized after insertion. Protected layouts have a 1pt floor and
+may grow right by at most 36pt after
 checking other text, images, and vector strokes. If they still cannot fit, the
 PDF is not written. Standalone code retains exact positions; inline code can
 move to follow Japanese word order. Plain paragraph font fitting and general
@@ -587,8 +587,8 @@ Ruled tables use PyMuPDF `find_tables(strategy='lines_strict')` before prose
 grouping. Character centers assign text to each cell once, including merged cells.
 Only eligible cell prose reaches the translator; words, numbers, standalone URLs
 and code stay in their original font/position. Translated cells use HTML placement
-with original color, inferred horizontal alignment, fixed cell bounds and an 8pt
-floor (smaller source text keeps its source floor). Cells cannot grow into their
+with original color, inferred horizontal alignment, fixed cell bounds and a 1pt
+floor. Cells cannot grow into their
 neighbors. Overflow fails before redaction or replacement of an existing output.
 Source glyph runs are redacted transparently, retaining backgrounds and grid lines.
 Detection normalizes `/Rotate` to the raw text coordinate system and restores it;
@@ -632,3 +632,13 @@ python scripts/evaluate_pdf_tables.py --output pdf/table-audit/native \
 PDF/PNG evidence is generated under the ignored `pdf/table-audit/` directory. The
 full 184-test suite and native CLI/API/Chromium acceptance passed after these changes.
 Table API reference: [PyMuPDF table detection and redaction](https://pymupdf.readthedocs.io/en/latest/page.html).
+
+### Placement policy: minimum size
+
+At the user's request the minimum placement font size is **1pt**, including table
+cells, protected spans and the compatibility TextWriter size search. Translated
+text is never enlarged beyond the source size (source sizes below 1pt start at
+1pt). Complete fitting is still mandatory: long unbreakable words and text that
+cannot fit at 1pt fail before original text is redacted or an output is replaced.
+The earlier 8pt measurements above describe the previous policy. A per-block
+adjustment / review UI is deferred; overflow continues to fail the job.
