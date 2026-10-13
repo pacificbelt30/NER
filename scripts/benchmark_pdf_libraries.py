@@ -380,11 +380,15 @@ def layout_benchmark(files, regions, root):
                         metrics['mixed_layout']['url_characters_present_ignoring_wrap'] = normalized(URL) in joined
                         metrics['mixed_layout']['uri_targets_unchanged'] = all(
                             link.get('uri') == URL for page in doc for link in page.get_links())
-                        cells = [('エンジン', (40, 230, 230, 270)), ('状態', (230, 230, 420, 270)),
-                                 ('Bergamot', (40, 270, 230, 310)), ('準備完了', (230, 270, 420, 310))]
-                        metrics['translated_table_cells_correct'] = sum(
-                            target in doc[1].get_textbox(fitz.Rect(box)) for target, box in cells)
-                        metrics['translated_table_cells_total'] = 4
+                        # This fixture consists only of single-word labels: the
+                        # selection policy now leaves them in their source cells.
+                        # Phrase-cell translation is measured separately by
+                        # scripts/evaluate_pdf_tables.py, not inferred from these.
+                        cells = [('Engine', (40, 230, 230, 270)), ('Status', (230, 230, 420, 270)),
+                                 ('Bergamot', (40, 270, 230, 310)), ('Ready', (230, 270, 420, 310))]
+                        metrics['original_table_cells_correct'] = sum(
+                            target == doc[1].get_textbox(fitz.Rect(box)).strip() for target, box in cells)
+                        metrics['original_table_cells_total'] = 4
                 if source.stem == 'graphics':
                     # Fixed graphic regions contain no translated text.
                     with fitz.open(source) as before, fitz.open(destination) as after:

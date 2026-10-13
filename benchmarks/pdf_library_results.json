@@ -15,15 +15,15 @@
   "extraction": [
     {
       "engine": "PyMuPDF",
-      "text_extraction_median_ms": 9.448172524571419,
+      "text_extraction_median_ms": 9.860636666417122,
       "runs_ms": [
-        9.697334840893745,
-        9.485609829425812,
-        9.447934105992317,
-        9.448172524571419,
-        9.420959278941154,
-        9.438639506697655,
-        9.619249030947685
+        9.519258514046669,
+        9.373223409056664,
+        9.45558212697506,
+        10.228285565972328,
+        10.423475876450539,
+        10.937342420220375,
+        9.860636666417122
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -38,7 +38,7 @@
       "anchor_left_x_error_pt": 0.0,
       "uri_links_extracted": 2,
       "table_cells_correct": true,
-      "table_ms": 12.242896482348442,
+      "table_ms": 12.346513569355011,
       "table": [
         [
           "Engine",
@@ -52,15 +52,15 @@
     },
     {
       "engine": "pdfplumber",
-      "text_extraction_median_ms": 73.97418282926083,
+      "text_extraction_median_ms": 71.13423570990562,
       "runs_ms": [
-        72.62630760669708,
-        90.26984125375748,
-        68.97403113543987,
-        70.8836205303669,
-        74.78965446352959,
-        73.97418282926083,
-        75.31046122312546
+        74.21682961285114,
+        90.16344137489796,
+        68.91831755638123,
+        69.57765109837055,
+        70.01109048724174,
+        71.65911793708801,
+        71.13423570990562
       ],
       "text_probes_passed": 9,
       "text_probes_total": 10,
@@ -75,7 +75,7 @@
       "anchor_left_x_error_pt": 0.0,
       "uri_links_extracted": 2,
       "table_cells_correct": true,
-      "table_ms": 25.745999068021774,
+      "table_ms": 26.061255484819412,
       "table": [
         [
           "Engine",
@@ -89,15 +89,15 @@
     },
     {
       "engine": "pdfminer.six",
-      "text_extraction_median_ms": 45.97867280244827,
+      "text_extraction_median_ms": 47.10639640688896,
       "runs_ms": [
-        45.97867280244827,
-        46.02005146443844,
-        45.943260192871094,
-        45.910365879535675,
-        45.96505127847195,
-        46.1024921387434,
-        46.14574462175369
+        45.69198563694954,
+        46.79974354803562,
+        47.16374725103378,
+        46.63218930363655,
+        47.10639640688896,
+        50.15994422137737,
+        49.0727573633194
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -117,15 +117,15 @@
     },
     {
       "engine": "pypdf",
-      "text_extraction_median_ms": 10.119948536157608,
+      "text_extraction_median_ms": 10.252339765429497,
       "runs_ms": [
-        10.354273021221161,
-        10.158095508813858,
-        10.109789669513702,
-        10.10485552251339,
-        10.119948536157608,
-        10.09245216846466,
-        10.187743231654167
+        12.246247380971909,
+        10.583484545350075,
+        10.239051654934883,
+        10.197171941399574,
+        10.328978300094604,
+        10.171987116336823,
+        10.252339765429497
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -145,15 +145,15 @@
     },
     {
       "engine": "pypdfium2",
-      "text_extraction_median_ms": 5.386825650930405,
+      "text_extraction_median_ms": 5.553228780627251,
       "runs_ms": [
-        5.513647571206093,
-        5.386825650930405,
-        5.403945222496986,
-        5.370562896132469,
-        5.255751311779022,
-        5.350198596715927,
-        5.428468808531761
+        5.77675923705101,
+        5.553228780627251,
+        5.561605095863342,
+        5.546018481254578,
+        5.4880306124687195,
+        5.492685362696648,
+        5.592186003923416
       ],
       "text_probes_passed": 10,
       "text_probes_total": 10,
@@ -175,7 +175,7 @@
   "copying": [
     {
       "engine": "PyMuPDF",
-      "elapsed_ms": 84.14814807474613,
+      "elapsed_ms": 99.36756640672684,
       "cases": [
         {
           "case": "mixed",
@@ -242,7 +242,7 @@
     },
     {
       "engine": "pypdf",
-      "elapsed_ms": 86.94651164114475,
+      "elapsed_ms": 107.55939222872257,
       "cases": [
         {
           "case": "mixed",
@@ -309,7 +309,7 @@
     },
     {
       "engine": "pypdfium2",
-      "elapsed_ms": 83.90359207987785,
+      "elapsed_ms": 86.0840491950512,
       "cases": [
         {
           "case": "mixed",
@@ -388,7 +388,7 @@
             "unremoved_original_paragraph_pages": 0,
             "pdfium_changed_channel_percent": [
               8.393884015594542,
-              4.042763157894737
+              3.5506213450292394
             ],
             "minimum_font_size": 8.835200309753418,
             "font_floor_violating_blocks": 0,
@@ -533,11 +533,11 @@
               "url_characters_present_ignoring_wrap": true,
               "uri_targets_unchanged": true
             },
-            "translated_table_cells_correct": 2,
-            "translated_table_cells_total": 4
+            "original_table_cells_correct": 4,
+            "original_table_cells_total": 4
           },
-          "elapsed_ms": 545.4654954373837,
-          "bytes": 1779977
+          "elapsed_ms": 608.7775398045778,
+          "bytes": 1780125
         },
         {
           "case": "columns",
@@ -547,13 +547,13 @@
             "japanese_text_extractable": true,
             "unremoved_original_paragraph_pages": 0,
             "pdfium_changed_channel_percent": [
-              3.2730263157894735
+              3.197733918128655
             ],
-            "minimum_font_size": 9.0,
+            "minimum_font_size": 12.0,
             "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 251.23737379908562,
-          "bytes": 1703735
+          "elapsed_ms": 264.24041017889977,
+          "bytes": 1703869
         },
         {
           "case": "graphics",
@@ -570,7 +570,7 @@
             "image_pixels_exact": true,
             "vector_pixels_exact": true
           },
-          "elapsed_ms": 263.69889080524445,
+          "elapsed_ms": 276.28665417432785,
           "bytes": 1706486
         },
         {
@@ -586,7 +586,7 @@
             "minimum_font_size": 1.5,
             "font_floor_violating_blocks": 1
           },
-          "elapsed_ms": 428.24240401387215,
+          "elapsed_ms": 458.4373738616705,
           "bytes": 1703654
         },
         {
@@ -602,7 +602,7 @@
             "minimum_font_size": 8.5,
             "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 241.00199155509472,
+          "elapsed_ms": 243.29916760325432,
           "bytes": 1703729
         }
       ]
@@ -619,7 +619,7 @@
             "unremoved_original_paragraph_pages": 0,
             "pdfium_changed_channel_percent": [
               8.180494639376217,
-              3.800804093567251
+              3.413194444444444
             ],
             "minimum_font_size": 8.835200309753418,
             "font_floor_violating_blocks": 0,
@@ -700,11 +700,11 @@
               "url_characters_present_ignoring_wrap": true,
               "uri_targets_unchanged": true
             },
-            "translated_table_cells_correct": 2,
-            "translated_table_cells_total": 4
+            "original_table_cells_correct": 4,
+            "original_table_cells_total": 4
           },
-          "elapsed_ms": 609.7472403198481,
-          "bytes": 1787179
+          "elapsed_ms": 652.3615568876266,
+          "bytes": 1785972
         },
         {
           "case": "columns",
@@ -714,13 +714,13 @@
             "japanese_text_extractable": true,
             "unremoved_original_paragraph_pages": 0,
             "pdfium_changed_channel_percent": [
-              3.55391081871345
+              3.4700292397660824
             ],
-            "minimum_font_size": 9.503520011901855,
+            "minimum_font_size": 12.0,
             "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 268.00174079835415,
-          "bytes": 1705979
+          "elapsed_ms": 266.60291478037834,
+          "bytes": 1705413
         },
         {
           "case": "graphics",
@@ -737,14 +737,14 @@
             "image_pixels_exact": true,
             "vector_pixels_exact": true
           },
-          "elapsed_ms": 293.47523115575314,
+          "elapsed_ms": 303.80021035671234,
           "bytes": 1708282
         },
         {
           "case": "dense",
           "status": "rejected",
           "error": "ValueError: p1-b1-u1: overflow above readable font floor",
-          "elapsed_ms": 3.0466243624687195
+          "elapsed_ms": 3.7270355969667435
         },
         {
           "case": "rotated-page",
@@ -759,7 +759,7 @@
             "minimum_font_size": 8.727239608764648,
             "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 251.45960040390491,
+          "elapsed_ms": 260.74474304914474,
           "bytes": 1705072
         }
       ]
@@ -776,7 +776,7 @@
             "unremoved_original_paragraph_pages": 1,
             "pdfium_changed_channel_percent": [
               9.56603313840156,
-              3.673367446393762
+              3.295443469785575
             ],
             "minimum_font_size": 6.327280044555664,
             "font_floor_violating_blocks": 2,
@@ -944,11 +944,11 @@
               "url_characters_present_ignoring_wrap": true,
               "uri_targets_unchanged": true
             },
-            "translated_table_cells_correct": 2,
-            "translated_table_cells_total": 4
+            "original_table_cells_correct": 4,
+            "original_table_cells_total": 4
           },
-          "elapsed_ms": 332.7752947807312,
-          "bytes": 159940
+          "elapsed_ms": 364.7587914019823,
+          "bytes": 158619
         },
         {
           "case": "columns",
@@ -958,13 +958,13 @@
             "japanese_text_extractable": true,
             "unremoved_original_paragraph_pages": 0,
             "pdfium_changed_channel_percent": [
-              3.367324561403509
+              3.298611111111111
             ],
-            "minimum_font_size": 7.494551658630371,
-            "font_floor_violating_blocks": 1
+            "minimum_font_size": 12.0,
+            "font_floor_violating_blocks": 0
           },
-          "elapsed_ms": 106.72923177480698,
-          "bytes": 14148
+          "elapsed_ms": 106.73512704670429,
+          "bytes": 13659
         },
         {
           "case": "graphics",
@@ -981,7 +981,7 @@
             "image_pixels_exact": true,
             "vector_pixels_exact": true
           },
-          "elapsed_ms": 117.55798012018204,
+          "elapsed_ms": 130.9557668864727,
           "bytes": 24019
         },
         {
@@ -997,7 +997,7 @@
             "minimum_font_size": 1.769484043121338,
             "font_floor_violating_blocks": 1
           },
-          "elapsed_ms": 105.16510531306267,
+          "elapsed_ms": 109.22078415751457,
           "bytes": 12969
         },
         {
@@ -1013,7 +1013,7 @@
             "minimum_font_size": 7.494539737701416,
             "font_floor_violating_blocks": 1
           },
-          "elapsed_ms": 77.30372063815594,
+          "elapsed_ms": 104.0300652384758,
           "bytes": 13772
         }
       ]

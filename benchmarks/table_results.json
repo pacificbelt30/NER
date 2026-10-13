@@ -1,0 +1,504 @@
+{
+  "schema": 1,
+  "date": "2026-10-13",
+  "baseline_commit": "74187a0",
+  "scope": "Two synthetic one-page tables: 11 ruled cells with merging, multiline text, shading and a linked URL; 8 regular borderless cells. Not a universal PDF fidelity or translation accuracy score.",
+  "metrics": {
+    "translated_cells_correct": "Whitespace-normalized full-cell equality with expected fixture translation; native mode uses the model-returned text for that individual cell. Mixed or truncated content fails.",
+    "skipped_cells_exact": "Characters and glyph rectangles are identical, rounded to 0.001 point.",
+    "grid_and_background_probes_exact": "Pixel-identical fixed blank/stroke crops at 2x PyMuPDF rendering.",
+    "seconds": "Single wall-clock run including placement and probes, with concurrent activity; not a performance ranking."
+  },
+  "cases": {
+    "ruled": {
+      "baseline": {
+        "backend": "INDEX",
+        "seconds": 0.17849159240722656,
+        "selected_blocks": 5,
+        "metrics": {
+          "translated_cells_correct": 1,
+          "translated_cells_total": 5,
+          "skipped_cells_exact": 0,
+          "skipped_cells_total": 6,
+          "grid_and_background_probes_exact": 9,
+          "grid_and_background_probes_total": 11,
+          "uri_on_visible_address": true,
+          "cells": [
+            {
+              "source": "Engine",
+              "translated": false,
+              "visible": "Engine Status Count",
+              "passed": false
+            },
+            {
+              "source": "Status",
+              "translated": false,
+              "visible": "",
+              "passed": false
+            },
+            {
+              "source": "Count",
+              "translated": false,
+              "visible": "",
+              "passed": false
+            },
+            {
+              "source": "Local translation",
+              "translated": true,
+              "visible": "ローカル翻訳 使用できます 42",
+              "passed": false
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "",
+              "passed": false
+            },
+            {
+              "source": "42",
+              "translated": false,
+              "visible": "",
+              "passed": false
+            },
+            {
+              "source": "Use a local model.\nKeep files on this computer.",
+              "translated": true,
+              "visible": "ローカルモデルを使い、ファイルをこのコンピューターに保存します。",
+              "passed": true
+            },
+            {
+              "source": "Read https://example.org/help now.",
+              "translated": true,
+              "visible": "https://example.org/helpを今読んでください",
+              "passed": false
+            },
+            {
+              "source": "Bergamot",
+              "translated": false,
+              "visible": "。 Bergamot",
+              "passed": false
+            },
+            {
+              "source": "Keep the original table layout.",
+              "translated": true,
+              "visible": "元の表のレイアウトを維持します。 www.example.org",
+              "passed": false
+            },
+            {
+              "source": "www.example.org",
+              "translated": false,
+              "visible": "",
+              "passed": false
+            }
+          ]
+        },
+        "execution": "deterministic_fixture_no_model"
+      },
+      "fixed_translations": {
+        "backend": "INDEX",
+        "seconds": 0.2818787582218647,
+        "selected_blocks": 5,
+        "metrics": {
+          "translated_cells_correct": 5,
+          "translated_cells_total": 5,
+          "skipped_cells_exact": 6,
+          "skipped_cells_total": 6,
+          "grid_and_background_probes_exact": 11,
+          "grid_and_background_probes_total": 11,
+          "uri_on_visible_address": true,
+          "cells": [
+            {
+              "source": "Engine",
+              "translated": false,
+              "visible": "Engine",
+              "passed": true
+            },
+            {
+              "source": "Status",
+              "translated": false,
+              "visible": "Status",
+              "passed": true
+            },
+            {
+              "source": "Count",
+              "translated": false,
+              "visible": "Count",
+              "passed": true
+            },
+            {
+              "source": "Local translation",
+              "translated": true,
+              "visible": "ローカル翻訳",
+              "passed": true
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "使用できます",
+              "passed": true
+            },
+            {
+              "source": "42",
+              "translated": false,
+              "visible": "42",
+              "passed": true
+            },
+            {
+              "source": "Use a local model.\nKeep files on this computer.",
+              "translated": true,
+              "visible": "ローカルモデルを使い、ファイルをこのコンピューターに保存します。",
+              "passed": true
+            },
+            {
+              "source": "Read https://example.org/help now.",
+              "translated": true,
+              "visible": "https://example.org/helpを今読んでください。",
+              "passed": true
+            },
+            {
+              "source": "Bergamot",
+              "translated": false,
+              "visible": "Bergamot",
+              "passed": true
+            },
+            {
+              "source": "Keep the original table layout.",
+              "translated": true,
+              "visible": "元の表のレイアウトを維持します。",
+              "passed": true
+            },
+            {
+              "source": "www.example.org",
+              "translated": false,
+              "visible": "www.example.org",
+              "passed": true
+            }
+          ]
+        },
+        "execution": "deterministic_fixture_no_model"
+      },
+      "native_bergamot": {
+        "backend": "BERGAMOT",
+        "seconds": 0.643764317035675,
+        "selected_blocks": 5,
+        "metrics": {
+          "translated_cells_correct": 5,
+          "translated_cells_total": 5,
+          "skipped_cells_exact": 6,
+          "skipped_cells_total": 6,
+          "grid_and_background_probes_exact": 11,
+          "grid_and_background_probes_total": 11,
+          "uri_on_visible_address": true,
+          "cells": [
+            {
+              "source": "Engine",
+              "translated": false,
+              "visible": "Engine",
+              "passed": true
+            },
+            {
+              "source": "Status",
+              "translated": false,
+              "visible": "Status",
+              "passed": true
+            },
+            {
+              "source": "Count",
+              "translated": false,
+              "visible": "Count",
+              "passed": true
+            },
+            {
+              "source": "Local translation",
+              "translated": true,
+              "visible": "現地翻訳",
+              "passed": true
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "すぐに使える",
+              "passed": true
+            },
+            {
+              "source": "42",
+              "translated": false,
+              "visible": "42",
+              "passed": true
+            },
+            {
+              "source": "Use a local model.\nKeep files on this computer.",
+              "translated": true,
+              "visible": "ローカルモデルを使用してください。このコンピュータにファイルを保存してください。",
+              "passed": true
+            },
+            {
+              "source": "Read https://example.org/help now.",
+              "translated": true,
+              "visible": "今すぐhttps://example.org/helpを読んで。",
+              "passed": true
+            },
+            {
+              "source": "Bergamot",
+              "translated": false,
+              "visible": "Bergamot",
+              "passed": true
+            },
+            {
+              "source": "Keep the original table layout.",
+              "translated": true,
+              "visible": "元のテーブルレイアウトを維持してください。",
+              "passed": true
+            },
+            {
+              "source": "www.example.org",
+              "translated": false,
+              "visible": "www.example.org",
+              "passed": true
+            }
+          ]
+        },
+        "execution": "native_worker"
+      }
+    },
+    "borderless": {
+      "baseline": {
+        "backend": "INDEX",
+        "seconds": 0.0685549397021532,
+        "selected_blocks": 3,
+        "metrics": {
+          "translated_cells_correct": 0,
+          "translated_cells_total": 6,
+          "skipped_cells_exact": 2,
+          "skipped_cells_total": 2,
+          "grid_and_background_probes_exact": 1,
+          "grid_and_background_probes_total": 1,
+          "uri_on_visible_address": null,
+          "cells": [
+            {
+              "source": "Local translation",
+              "translated": true,
+              "visible": "ローカル翻訳 使用できます",
+              "passed": false
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "",
+              "passed": false
+            },
+            {
+              "source": "Keep the original table layout.",
+              "translated": true,
+              "visible": "元の表のレイアウトを維持します。 使用",
+              "passed": false
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "できます",
+              "passed": false
+            },
+            {
+              "source": "Use a local model.",
+              "translated": true,
+              "visible": "ローカルモデルを使い、ファイルをこのコンピ",
+              "passed": false
+            },
+            {
+              "source": "Keep files on this computer.",
+              "translated": true,
+              "visible": "ューターに保存します。",
+              "passed": false
+            },
+            {
+              "source": "Offline",
+              "translated": false,
+              "visible": "Offline",
+              "passed": true
+            },
+            {
+              "source": "42",
+              "translated": false,
+              "visible": "42",
+              "passed": true
+            }
+          ]
+        },
+        "execution": "deterministic_fixture_no_model"
+      },
+      "fixed_translations": {
+        "backend": "INDEX",
+        "seconds": 0.25210034288465977,
+        "selected_blocks": 6,
+        "metrics": {
+          "translated_cells_correct": 6,
+          "translated_cells_total": 6,
+          "skipped_cells_exact": 2,
+          "skipped_cells_total": 2,
+          "grid_and_background_probes_exact": 1,
+          "grid_and_background_probes_total": 1,
+          "uri_on_visible_address": null,
+          "cells": [
+            {
+              "source": "Local translation",
+              "translated": true,
+              "visible": "ローカル翻訳",
+              "passed": true
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "使用できます",
+              "passed": true
+            },
+            {
+              "source": "Keep the original table layout.",
+              "translated": true,
+              "visible": "元の表のレイアウトを維持します。",
+              "passed": true
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "使用できます",
+              "passed": true
+            },
+            {
+              "source": "Use a local model.",
+              "translated": true,
+              "visible": "ローカルモデルを使います。",
+              "passed": true
+            },
+            {
+              "source": "Keep files on this computer.",
+              "translated": true,
+              "visible": "ファイルをこのコンピューターに保存します。",
+              "passed": true
+            },
+            {
+              "source": "Offline",
+              "translated": false,
+              "visible": "Offline",
+              "passed": true
+            },
+            {
+              "source": "42",
+              "translated": false,
+              "visible": "42",
+              "passed": true
+            }
+          ]
+        },
+        "execution": "deterministic_fixture_no_model"
+      },
+      "native_bergamot": {
+        "backend": "BERGAMOT",
+        "seconds": 0.5995801389217377,
+        "selected_blocks": 6,
+        "metrics": {
+          "translated_cells_correct": 6,
+          "translated_cells_total": 6,
+          "skipped_cells_exact": 2,
+          "skipped_cells_total": 2,
+          "grid_and_background_probes_exact": 1,
+          "grid_and_background_probes_total": 1,
+          "uri_on_visible_address": null,
+          "cells": [
+            {
+              "source": "Local translation",
+              "translated": true,
+              "visible": "現地翻訳",
+              "passed": true
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "すぐに使える",
+              "passed": true
+            },
+            {
+              "source": "Keep the original table layout.",
+              "translated": true,
+              "visible": "元のテーブルレイアウトを維持してください。",
+              "passed": true
+            },
+            {
+              "source": "Ready for use",
+              "translated": true,
+              "visible": "すぐに使える",
+              "passed": true
+            },
+            {
+              "source": "Use a local model.",
+              "translated": true,
+              "visible": "ローカルモデルを使用してください。",
+              "passed": true
+            },
+            {
+              "source": "Keep files on this computer.",
+              "translated": true,
+              "visible": "このコンピュータにファイルを保存してください。",
+              "passed": true
+            },
+            {
+              "source": "Offline",
+              "translated": false,
+              "visible": "Offline",
+              "passed": true
+            },
+            {
+              "source": "42",
+              "translated": false,
+              "visible": "42",
+              "passed": true
+            }
+          ]
+        },
+        "execution": "native_worker"
+      }
+    }
+  },
+  "regression": {
+    "pytest_passed": 184,
+    "page_rotations_checked": [
+      0,
+      90,
+      180,
+      270
+    ],
+    "native_end_to_end": {
+      "cli": {
+        "info_without_config": true,
+        "native_translation": true,
+        "alternating_comparison": true,
+        "missing_file_nonzero": true,
+        "source_unchanged": true
+      },
+      "http": {
+        "native_job_and_downloads": true,
+        "duplicate_receipt": true,
+        "page_preview": true,
+        "invalid_pdf_job_failed": true,
+        "running_cancel": true,
+        "retry": true
+      },
+      "browser": {
+        "actual_upload_and_translation": true,
+        "png_preview": true,
+        "decoded_previews_have_content": true,
+        "reload_recovery": true,
+        "mobile_no_overflow": true,
+        "javascript_errors": []
+      }
+    },
+    "native_long_block_characters": 3057,
+    "native_long_block_chunks": 5
+  },
+  "evidence_directory": "pdf/table-audit (ignored generated PDFs/PNGs)",
+  "limitations": [
+    "Irregular or multiline borderless grids and merged borderless cells are not inferred.",
+    "The English prose policy is heuristic, not language or named-entity recognition.",
+    "Model fluency and semantic correctness are not evaluated by cell containment probes."
+  ]
+}

@@ -10,12 +10,36 @@ import pymupdf as fitz
 
 from .errors import ConfigurationError, PDFError
 from .io_utils import atomic_output
-from .text_blocks import LiteralRange, TranslationBlock, prepare_block
+from .text_blocks import BlockTranslation, LiteralRange, TranslationBlock, prepare_block
 from .translation_policy import translation_decision
 from .block_layout import PreparedPage, prepare_rich
+from .pdf_tables import separate_table_cells
 
 
 SEPARATOR = '\n------------------------------\n'
+
+
+def _has_spatial_labels(lines):
+    positions = sorted((line['spans'][0]['origin'][1], line['bbox'][0], line['bbox'][2])
+                       for line in lines if line['spans'] and tuple(line['dir']) == (1, 0))
+    baseline = None
+    row = []
+    for y, x0, x1 in positions:
+        if baseline is None or y - baseline > 2:
+            if _separate_row(row):
+                return True
+            baseline, row = y, []
+        row.append((x0, x1))
+    return _separate_row(row)
+
+
+def _separate_row(row):
+    right = float('inf')
+    for x0, x1 in sorted(row):
+        if x0 - right >= 12:
+            return True
+        right = min(right, x1)
+    return False
 
 
 class PaperExtract:
@@ -76,6 +100,7 @@ class PaperExtract:
             # Character geometry lets link ranges be associated with actual text,
             # rather than every span inside a paragraph rectangle.
             source = page.get_text('rawdict', flags=fitz.TEXTFLAGS_TEXT)['blocks']
+            source = separate_table_cells(page, source)
             sizes = [span['size'] for block in source if block['type'] == 0
                      for line in block['lines'] for span in line['spans']]
             body_size = median(sizes) if sizes else 12
@@ -98,15 +123,20 @@ class PaperExtract:
                     # Code blocks remain selectable, in their original font/position.
                     continue
                 lines = block['lines']
-                is_list = all(re.match(r'^\s*(?:\d+[.)]|[-•*])\s+', ''.join(
+                cell = block.get('table_cell')
+                is_list = not cell and all(re.match(r'^\s*(?:\d+[.)]|[-•*])\s+', ''.join(
                     char['c'] for span in line['spans'] for char in span['chars'])) for line in lines)
-                units = [[line] for line in lines] if is_list else [lines]
+                # An uncertain borderless grid must not concatenate labels across
+                # columns merely because PDF content streams call them one block.
+                spatial_labels = not cell and _has_spatial_labels(lines)
+                units = [[line] for line in lines] if is_list or spatial_labels else [lines]
                 for unit_num, unit in enumerate(units):
                     text, ranges, line_metadata = self._block_source(unit, links, code_fonts=not all_monospace)
-                    block_id = f'p{page_num + 1}-b{block_num + 1}-u{unit_num + 1}'
+                    block_id = (f"p{page_num + 1}-t{cell['table'] + 1}-r{cell['row'] + 1}-c{cell['column'] + 1}"
+                                if cell else f'p{page_num + 1}-b{block_num + 1}-u{unit_num + 1}')
                     font_sizes = [span['size'] for line in unit for span in line['spans']]
                     font_size = sum(font_sizes) / len(font_sizes)
-                    role = ('list' if is_list else 'heading'
+                    role = ('table_cell' if cell else 'list' if is_list else 'heading'
                             if len(unit) <= 2 and font_size >= body_size * 1.25 else 'paragraph')
                     prepared = prepare_block(TranslationBlock(block_id, text, role,
                                                                protected_ranges=tuple(ranges)))
@@ -121,11 +151,29 @@ class PaperExtract:
                     bbox = fitz.Rect()
                     for line in unit:
                         bbox |= fitz.Rect(line['bbox'])
+                    text_bbox = tuple(bbox)
+                    if cell:
+                        # Use the cell's space, never a neighboring cell. Keep a
+                        # small inset from the original grid strokes on all sides.
+                        bounds = fitz.Rect(cell['bbox'])
+                        padding = min(2, bounds.width / 10, bounds.height / 10)
+                        bbox = bounds + (padding, padding, -padding, -padding)
+                    alignment = 'left'
+                    if cell:
+                        left = text_bbox[0] - bounds.x0
+                        right = bounds.x1 - text_bbox[2]
+                        if min(left, right) > 4 and abs(left - right) <= 2:
+                            alignment = 'center'
+                        elif right <= max(4, font_size / 2) and left > right + 4:
+                            alignment = 'right'
                     blocks.append({
                         'id': block_id, 'role': role, 'context': previous_context,
                         'bbox': tuple(bbox), 'source_bbox': block['bbox'],
                         'fontsize': font_size, 'page': page_num, 'txt': text,
                         'lines': line_metadata, 'protected_ranges': [asdict(span) for span in ranges],
+                        'text_bbox': text_bbox, 'table_cell': cell,
+                        'text_align': alignment,
+                        'fixed_layout': bool(cell or spatial_labels),
                     })
             pages.append(blocks)
         self.pages_info = pages
@@ -221,7 +269,14 @@ class PaperExtract:
                 continue
             page = self.new_doc[page_num]
             for block in blocks:
-                page.add_redact_annot(block['bbox'])
+                # Redact only selected source glyph runs: a layout rectangle may
+                # contain untouched labels, table backgrounds, or other cells.
+                for line in block['lines']:
+                    for span in line['spans']:
+                        rect = fitz.Rect(span['bbox'])
+                        if block.get('table_cell'):
+                            rect &= fitz.Rect(block['table_cell']['bbox'])
+                        page.add_redact_annot(rect, fill=False, cross_out=False)
             # Preserve figures and vector graphics under the text rectangles.
             page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
                                   graphics=fitz.PDF_REDACT_LINE_ART_NONE)
@@ -282,8 +337,12 @@ class PaperExtract:
         for index, (block, text) in enumerate(zip(blocks, texts)):
             if not isinstance(text, str) or not text.strip():
                 raise PDFError(f'Page {page_num + 1}: empty or invalid translation.')
-            if results is not None and results[index].spans:
-                rich.append(prepare_rich(page, block, results[index], self.font_path))
+            result = results[index] if results is not None else None
+            if result is None and block.get('fixed_layout'):
+                protected = prepare_block(TranslationBlock(block['id'], text))
+                result = BlockTranslation(block['id'], text, protected.text, protected.spans, 0)
+            if result is not None and (result.spans or block.get('fixed_layout')):
+                rich.append(prepare_rich(page, block, result, self.font_path))
                 continue
             text = re.sub(r'\n(?!\n)', ' ', text)
             size = self.calc_fontsize(page.rect, block['bbox'], text, self.font, block['fontsize'])

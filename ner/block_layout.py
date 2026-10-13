@@ -21,7 +21,7 @@ class RichPlacement:
 
 
 def prepare_rich(source_page, block, result, font_path=None):
-    page_rect = source_page.rect
+    page_rect = source_page.rect * source_page.derotation_matrix
     protected = {span.token: span for span in result.spans}
     parts, cursor = [], 0
     for match in TOKEN.finditer(result.canonical_text):
@@ -40,7 +40,8 @@ def prepare_rich(source_page, block, result, font_path=None):
     minimum = min(size, 8)
     color = block['lines'][0]['spans'][0]['color']
     css = (f'body {{margin:0; font-family:sans-serif; font-size:{size}pt; line-height:1.1; color:#{color:06x};}} '
-           'p {margin:0;} code {font-family:monospace;} a {color:#004c99;}')
+           f"p {{margin:0; text-align:{block.get('text_align', 'left')};}} "
+           'code {font-family:monospace;} a {color:#004c99;}')
     archive = None
     if font_path:
         path = Path(font_path)
@@ -65,7 +66,7 @@ def prepare_rich(source_page, block, result, font_path=None):
         # Code blocks and all other text, images, and vector strokes are obstacles.
         rect = fitz.Rect(plan.rect)
         expanded = fitz.Rect(rect)
-        if rotate == 0:
+        if rotate == 0 and not block.get('fixed_layout'):
             edge = min(rect.x1 + 36, page_rect.x1 - max(4, min(rect.x0, 40)))
             obstacles = [fitz.Rect(item['bbox']) for item in source_page.get_text(
                 'dict', flags=fitz.TEXTFLAGS_TEXT)['blocks'] if item['type'] == 0

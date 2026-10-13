@@ -477,11 +477,11 @@ Tables and character geometry are separate diagnostics, excluded from text timin
 
 | Library (version) | Text extraction, 6 pages (median ms) | Text probes | Correct column order | Character boxes | Exact table |
 | --- | ---: | ---: | --- | --- | --- |
-| PyMuPDF 1.28.2 | 9.45 | 10/10 | no | yes | yes |
-| pdfplumber 0.11.10 | 73.97 | 9/10 | no | yes | yes |
-| pdfminer.six 20260107 | 45.98 | 10/10 | yes | yes | not exposed / not tested |
-| pypdf 6.20.1 | 10.12 | 10/10 | no | no | not exposed / not tested |
-| pypdfium2 5.14.0 | 5.39 | 10/10 | no | yes | not exposed / not tested |
+| PyMuPDF 1.28.2 | 9.86 | 10/10 | no | yes | yes |
+| pdfplumber 0.11.10 | 71.13 | 9/10 | no | yes | yes |
+| pdfminer.six 20260107 | 47.11 | 10/10 | yes | yes | not exposed / not tested |
+| pypdf 6.20.1 | 10.25 | 10/10 | no | no | not exposed / not tested |
+| pypdfium2 5.14.0 | 5.55 | 10/10 | no | yes | not exposed / not tested |
 
 The ten text probes are exact phrases/literals with whitespace ignored. Pdfplumber
 missed the rotated phrase in its default text output. The column check requires
@@ -492,10 +492,11 @@ of the isolated Anchor text was within 0.01pt of the known x=40pt. This checks o
 horizontal anchor, not general coordinate accuracy. Pypdf has text visitors and
 transforms but its tested layout output does not expose character boxes.
 
-Table detection returned all four cells with PyMuPDF and pdfplumber. NER currently
-does not use either detector: translating its inferred row blocks placed **2/4
-translated cell labels** in the intended cells. A detector's success is not an
-end-to-end table reconstruction result.
+Table detection returned all four cells with PyMuPDF and pdfplumber. NER now uses
+PyMuPDF's ruled-cell detector before grouping prose. These four single-word labels
+stay in their original cells under the eligibility policy; phrase-cell translation
+and complex cell preservation are measured separately below. The original baseline
+placed 2/4 translated labels correctly; that earlier result remains in Git history.
 
 Unchanged-page round trips with PyMuPDF, pypdf, and pypdfium2 preserved page boxes,
 URI annotation counts, and rendered pixels on all six pages: **0% changed channels**
@@ -504,11 +505,11 @@ it says nothing about replacing translated text. Whole-page pixel differences
 on translated outputs are diagnostic only because legitimate glyph changes are
 expected; they are not scored as layout fidelity.
 
-| Writer experiment | Normal documents | Overfull document | Heading color / rotated text | Original prose removed | Table labels in correct cells |
+| Writer experiment | Normal documents | Overfull document | Heading color / rotated text | Original prose removed | Skipped table labels in source cells |
 | --- | --- | --- | --- | --- | --- |
-| NER current (TextWriter + protected HTML runs) | 4/4 written | written at 1.5pt | lost / lost | yes | 2/4 |
-| PyMuPDF HTML for all blocks (experimental) | 4/4 written | rejected at readable floor | retained / retained | yes | 2/4 |
-| ReportLab 5.0.1 + pypdf overlay | 4/4 written | written below 2pt | replacement loses style/direction | no: original text remains extractable | 2/4 |
+| NER current (TextWriter + protected/cell HTML runs) | 4/4 written | written at 1.5pt | lost / lost | yes | 4/4 |
+| PyMuPDF HTML for all blocks (experimental) | 4/4 written | rejected at readable floor | retained / retained | yes | 4/4 |
+| ReportLab 5.0.1 + pypdf overlay | 4/4 written | written below 2pt | replacement loses style/direction | no: original text remains extractable | 4/4 |
 
 All writers use the same extracted blocks and Japanese fixture translations.
 The HTML experiment additionally applies source color/direction and heading
@@ -535,7 +536,7 @@ downloads, previews, asynchronously reported invalid PDF errors, cancellation of
 running job, and retry. Real Chromium checked upload/translation, PNG previews,
 reload recovery, mobile width, and absence of JavaScript errors. Structured results
 are tracked in `benchmarks/end_to_end_results.json`; generated PDF/PNG evidence
-stays in the ignored `pdf/` directory. The full unit/integration suite passes 137
+stays in the ignored `pdf/` directory. The full unit/integration suite passes 184
 tests, including preservation of the cancellation exception across chunk callbacks.
 Index protocol/prompt tests use a loopback fixture server, not a loaded Index model.
 
@@ -546,9 +547,9 @@ Index protocol/prompt tests use a loopback fixture server, not a loaded Index mo
    normal/bold/italic font files explicitly; do not assume a fallback font retains
    source emphasis. Apply a readable size floor to plain blocks too and surface
    overflow with page/block IDs instead of shrinking to 1.5pt.
-2. Detect tables before grouping prose. Use `find_tables()` or pdfplumber to create
-   individual cell regions, preserve grid coordinates, and fit each cell separately.
-   This addresses NER's measured 2/4 cell placement rather than changing PDF writers.
+2. Extend the implemented cell detector to irregular borderless layouts and
+   multi-line borderless cells. Expose inferred cell bounds and classification in
+   an editable preview; existing text alone cannot establish every intended grid.
 3. Build column regions and their reading order before assigning heading context.
    A global y/x sort still interleaves columns. Pdfminer.six is a useful secondary
    analysis candidate, but its one-fixture success needs broader testing.
@@ -579,3 +580,55 @@ not a language detector or named-entity recognizer. Explicit calls to the transl
 service can still translate individual words. A selectable-text PDF with no eligible
 prose saves unchanged without model requests; an empty/scanned PDF still reports
 that OCR is needed. `PaperExtract.selection_decisions` records eligibility reasons.
+
+### Table translation and cell placement
+
+Ruled tables use PyMuPDF `find_tables(strategy='lines_strict')` before prose
+grouping. Character centers assign text to each cell once, including merged cells.
+Only eligible cell prose reaches the translator; words, numbers, standalone URLs
+and code stay in their original font/position. Translated cells use HTML placement
+with original color, inferred horizontal alignment, fixed cell bounds and an 8pt
+floor (smaller source text keeps its source floor). Cells cannot grow into their
+neighbors. Overflow fails before redaction or replacement of an existing output.
+Source glyph runs are redacted transparently, retaining backgrounds and grid lines.
+Detection normalizes `/Rotate` to the raw text coordinate system and restores it;
+0/90/180/270-degree pages have regression coverage.
+
+Borderless grids are inferred conservatively when at least three compact,
+regularly spaced rows repeat the same column origins. Closely spaced prose columns
+are excluded. Ambiguous same-row labels are kept as separate bounded units instead
+of concatenating them across columns. Irregular spacing, borderless merged cells,
+multi-line borderless cells, arbitrary skew and scanned tables need further work;
+this heuristic does not claim reliable reconstruction of every PDF table.
+
+Two self-authored one-page fixtures exercise 19 cells. The ruled fixture includes
+a merged cell, a multi-line cell, shaded rows, a clickable URL, words and numbers.
+The borderless fixture contains four regularly spaced rows. The baseline is
+commit `74187a0`, after eligibility changes but before table separation. Strict
+placement requires the **entire expected translation to equal the target cell's
+text**, ignoring extraction whitespace; neighboring cell text counts as failure.
+Skipped cells require identical characters and bounding boxes rounded to 0.001pt.
+
+| Fixture | Before: exact translated cells | After: fixed translations | After: real Bergamot | Skipped cells unchanged |
+| --- | ---: | ---: | ---: | ---: |
+| Ruled, merged and multi-line cells | 1/5 | 5/5 | 5/5 | 6/6 |
+| Regular borderless grid | 0/6 | 6/6 | 6/6 | 2/2 |
+
+The ruled fixture retains all 11 grid/background pixel probes and the URL's visible
+address/click target. Native placement compares against the model's own returned
+text, not a gold translation; these scores measure containment and preservation,
+not translation fluency or semantic accuracy. The earlier loose substring probe
+scored 3/5 and 2/6 for the baseline; strict equality rejects the mixed cell content.
+Raw per-cell results and acceptance checks are in `benchmarks/table_results.json`.
+
+```sh
+python scripts/evaluate_pdf_tables.py --output pdf/table-audit/current
+python scripts/evaluate_pdf_tables.py --output pdf/table-audit/borderless --borderless
+python scripts/evaluate_pdf_tables.py --output pdf/table-audit/native \
+  --worker /path/to/ner-bergamot-worker --model /path/to/model/config.yml
+# Add --code-root /path/to/read-only-baseline-checkout for the same before probes.
+```
+
+PDF/PNG evidence is generated under the ignored `pdf/table-audit/` directory. The
+full 184-test suite and native CLI/API/Chromium acceptance passed after these changes.
+Table API reference: [PyMuPDF table detection and redaction](https://pymupdf.readthedocs.io/en/latest/page.html).
