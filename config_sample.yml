@@ -3,10 +3,13 @@ PRIORITY: 'GOOGLE'
 # Retry transient transport/server errors only. Duplicate cache is per document.
 RETRIES: 1
 CACHE_SIZE: 1024
+# Maximum chunks in one semantic block. Invalid protection stops the document.
+MAX_CHUNKS: 128
 GOOGLE:
   URL: 'https://translate.googleapis.com/translate_a/single'
   TIMEOUT: 60
   REQUEST_INTERVAL: 0
+  CHUNK_CHARS: 2000
 TEXTRA:
   NAME: sample
   KEY: keysamplekeysamplekeysamplekeysamplekeysample
@@ -14,11 +17,13 @@ TEXTRA:
   URL: 'https://mt-auto-minhon-mlt.ucri.jgn-x.jp/api/mt/generalNT_en_ja/'
   TIMEOUT: 60
   REQUEST_INTERVAL: 3
+  CHUNK_CHARS: 2000
 INDEX:
   BASE_URL: 'http://127.0.0.1:8001/v1'
   MODEL: 'IndexTeam/Index-Translate-2B'
   MAX_TOKENS: 4096
   TIMEOUT: 300
+  CHUNK_CHARS: 2000
 BERGAMOT:
   BINARY: 'translator-cli'
   # Optional: keep the model loaded across blocks (takes precedence over BINARY).
@@ -26,5 +31,6 @@ BERGAMOT:
   MODEL_CONFIG: './models/bergamot/en-ja/config.yml'
   NUM_WORKERS: 1
   TIMEOUT: 300
+  CHUNK_CHARS: 700
 # Empty means the built-in Japanese font.
 FONT: ''

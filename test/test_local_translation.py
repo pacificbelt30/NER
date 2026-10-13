@@ -10,6 +10,7 @@ import yaml
 
 from ner import TextraConnection
 from ner.local_translators import BergamotTranslator, IndexTranslator
+from ner.text_blocks import TranslationBlock
 from ner.translation import TranslationService
 
 
@@ -203,3 +204,13 @@ def test_textra_initialization_remains_available(tmp_path, monkeypatch):
     connection = TextraConnection(str(source))
     assert connection.params['name'] == 'test'
     assert connection.consumer is not None
+
+
+def test_index_block_prompt_protects_literals_and_passes_heading_context(index_server):
+    index_server.content = '設定方法はX0をご覧ください。'
+    with TranslationService({'PRIORITY': 'INDEX', 'INDEX': {'BASE_URL': index_server.url}}) as service:
+        result = service.translate_block(TranslationBlock('p1-b2', 'Read https://example.org/setup.',
+                                                         context='Installation'))
+    assert result.text == '設定方法はhttps://example.org/setupをご覧ください。'
+    prompt = index_server.requests[0][1]['messages'][0]['content']
+    assert 'X0' in prompt and 'Installation' in prompt and 'https://example.org/setup' not in prompt

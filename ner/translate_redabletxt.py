@@ -5,6 +5,7 @@ from pathlib import Path
 from .io_utils import atomic_output
 from .translation import TranslationService
 from .yml_load import config_load
+from .text_blocks import TranslationBlock
 
 
 class Block:
@@ -21,7 +22,8 @@ class Block:
 
     def translate(self):
         self.previous_result = None
-        results = [self.translate_api.translate(text) for text in self.split_txt]
+        results = [self.translate_api.translate_block(TranslationBlock(f'text-{index + 1}', text)).text
+                   for index, text in enumerate(self.split_txt)]
         self.previous_result = ('\n' + self.split_marker + '\n').join(results)
         return self.previous_result
 

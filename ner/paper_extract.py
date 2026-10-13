@@ -1,13 +1,17 @@
 """PDF text extraction and bounded, lossless text placement."""
 
 import math
+from dataclasses import asdict
 from pathlib import Path
 import re
+from statistics import median
 
 import pymupdf as fitz
 
 from .errors import ConfigurationError, PDFError
 from .io_utils import atomic_output
+from .text_blocks import LiteralRange, TOKEN, TranslationBlock, prepare_block
+from .block_layout import PreparedPage, prepare_rich
 
 
 SEPARATOR = '\n------------------------------\n'
@@ -65,24 +69,117 @@ class PaperExtract:
         pages = []
         for page_num, page in enumerate(self.doc):
             blocks = []
-            for block in page.get_text('dict', flags=fitz.TEXTFLAGS_TEXT)['blocks']:
+            # Character geometry lets link ranges be associated with actual text,
+            # rather than every span inside a paragraph rectangle.
+            source = page.get_text('rawdict', flags=fitz.TEXTFLAGS_TEXT)['blocks']
+            sizes = [span['size'] for block in source if block['type'] == 0
+                     for line in block['lines'] for span in line['spans']]
+            body_size = median(sizes) if sizes else 12
+            links = [link for link in page.get_links() if link['kind'] == fitz.LINK_URI]
+            context = ''
+            for block_num, block in enumerate(source):
                 if block['type'] != 0:
                     continue
-                sizes, lines = [], []
-                for line in block['lines']:
-                    spans = line['spans']
-                    lines.append(re.sub(r'- $', '', ''.join(span['text'] for span in spans) + ' '))
-                    sizes.extend(span['size'] for span in spans)
-                text = ''.join(lines)
-                letters = len(re.sub(r'[^a-zA-Z]', '', text))
-                if letters <= 40 or not text or letters / len(text) <= 0.6:
+                all_spans = [span for line in block['lines'] for span in line['spans']
+                             if ''.join(char['c'] for char in span['chars']).strip()]
+                all_monospace = bool(all_spans) and all(self._monospace(span) for span in all_spans)
+                source_lines = [''.join(char['c'] for span in line['spans'] for char in span['chars'])
+                                for line in block['lines']]
+                code_syntax = any(re.search(
+                    r'^\s*(?:def|class|return|import|from|function|const|let|var|#include)\b'
+                    r'|\b[A-Za-z_]\w*\s*=(?!=)|^\s*[A-Za-z_]\w*\([^)]*\)\s*[;:]?$'
+                    r'|^\s*(?:[$>]\s+|(?:python\d?|pip|npm|curl|git)\s+)', line) for line in source_lines)
+                if all_monospace and code_syntax:
+                    # Code blocks remain selectable, in their original font/position.
                     continue
-                blocks.append({'bbox': block['bbox'], 'fontsize': sum(sizes) / len(sizes),
-                               'page': page_num, 'txt': text})
+                lines = block['lines']
+                is_list = all(re.match(r'^\s*(?:\d+[.)]|[-•*])\s+', ''.join(
+                    char['c'] for span in line['spans'] for char in span['chars'])) for line in lines)
+                units = [[line] for line in lines] if is_list else [lines]
+                for unit_num, unit in enumerate(units):
+                    text, ranges, line_metadata = self._block_source(unit, links, code_fonts=not all_monospace)
+                    block_id = f'p{page_num + 1}-b{block_num + 1}-u{unit_num + 1}'
+                    font_sizes = [span['size'] for line in unit for span in line['spans']]
+                    font_size = sum(font_sizes) / len(font_sizes)
+                    role = ('list' if is_list else 'heading'
+                            if len(unit) <= 2 and font_size >= body_size * 1.25 else 'paragraph')
+                    prepared = prepare_block(TranslationBlock(block_id, text, role,
+                                                               protected_ranges=tuple(ranges)))
+                    prose = TOKEN.sub('', prepared.text)
+                    letters = len(re.sub(r'[^a-zA-Z]', '', prose))
+                    if letters < 2 or letters / max(1, len(prose.strip())) <= 0.4:
+                        continue
+                    bbox = fitz.Rect()
+                    for line in unit:
+                        bbox |= fitz.Rect(line['bbox'])
+                    blocks.append({
+                        'id': block_id, 'role': role, 'context': context,
+                        'bbox': tuple(bbox), 'source_bbox': block['bbox'],
+                        'fontsize': font_size, 'page': page_num, 'txt': text,
+                        'lines': line_metadata, 'protected_ranges': [asdict(span) for span in ranges],
+                    })
+                    if role == 'heading':
+                        context = text[:512]
             pages.append(blocks)
         self.pages_info = pages
 
+    @staticmethod
+    def _monospace(span):
+        return bool(span['flags'] & fitz.TEXT_FONT_MONOSPACED
+                    or re.search(r'courier|mono|consolas|menlo', span['font'], re.I))
 
+    def _block_source(self, lines, links, *, code_fonts=True):
+        parts, ranges, metadata, offset, previous = [], [], [], 0, ''
+        for line in lines:
+            visible = ''.join(char['c'] for span in line['spans'] for char in span['chars'])
+            if parts:
+                # A wrapped URL is data: retain its hyphen and join its tail exactly.
+                url_tail = re.search(r'https?://\S+$', previous) and re.fullmatch(
+                    r'[A-Za-z0-9/?#&=.%+_~\-]+', visible.strip())
+                separator = '' if url_tail else ' '
+                parts.append(separator)
+                offset += len(separator)
+            span_metadata = []
+            for span in line['spans']:
+                text = ''.join(char['c'] for char in span['chars'])
+                start = offset
+                parts.append(text)
+                offset += len(text)
+                span_metadata.append({key: value for key, value in span.items() if key != 'chars'} | {'text': text})
+                # Prefer external link metadata over code-font detection. Linked labels
+                # are reserved as one literal so their hyperlink can move with them.
+                kinds = []
+                for char in span['chars']:
+                    box = fitz.Rect(char['bbox'])
+                    center = (box.tl + box.br) / 2
+                    link = next((link for link in links if link['from'].contains(center)), None)
+                    kinds.append(('link', link['uri']) if link else
+                                 ('code', None) if code_fonts and self._monospace(span) else None)
+                run = 0
+                while run < len(kinds):
+                    end = run + 1
+                    while end < len(kinds) and kinds[end] == kinds[run]:
+                        end += 1
+                    if kinds[run] is not None:
+                        kind, href = kinds[run]
+                        literal = text[run:end]
+                        if href and literal.lower().startswith(('http://', 'https://')):
+                            kind = 'url'
+                        ranges.append(LiteralRange(start + run, start + end, kind, href))
+                    run = end
+            metadata.append({key: value for key, value in line.items() if key != 'spans'} | {'spans': span_metadata})
+            previous = visible
+        text = ''.join(parts)
+        merged = []
+        for span in ranges:
+            previous_span = merged[-1] if merged else None
+            if (previous_span and previous_span.href == span.href
+                    and (span.href or previous_span.kind == span.kind)
+                    and not text[previous_span.end:span.start].strip()):
+                merged[-1] = LiteralRange(previous_span.start, span.end, previous_span.kind, span.href)
+            else:
+                merged.append(span)
+        return text, merged, metadata
 
     def _require_extracted(self):
         if self.pages_info is None:
@@ -163,7 +260,7 @@ class PaperExtract:
                 high = middle - 1
         return low / 2
 
-    def prepare_page(self, page_num, texts):
+    def prepare_page(self, page_num, texts, results=None):
         self._require_extracted()
         blocks = self.pages_info[page_num]
         if len(blocks) != len(texts):
@@ -172,15 +269,21 @@ class PaperExtract:
             return None
         page = self.new_doc[page_num]
         writer = fitz.TextWriter(page.rect)
-        for block, text in zip(blocks, texts):
+        rich = []
+        if results is not None and len(results) != len(blocks):
+            raise PDFError(f'Page {page_num + 1}: structured translation block count does not match the PDF.')
+        for index, (block, text) in enumerate(zip(blocks, texts)):
             if not isinstance(text, str) or not text.strip():
                 raise PDFError(f'Page {page_num + 1}: empty or invalid translation.')
+            if results is not None and results[index].spans:
+                rich.append(prepare_rich(page, block, results[index], self.font_path))
+                continue
             text = re.sub(r'\n(?!\n)', ' ', text)
             size = self.calc_fontsize(page.rect, block['bbox'], text, self.font, block['fontsize'])
             overflow = writer.fill_textbox(block['bbox'], text, font=self.font, fontsize=size, warn=None)
             if overflow:
                 raise PDFError(f'Page {page_num + 1}: translation overflow.')
-        return writer
+        return PreparedPage(writer, rich) if rich else writer
 
     def insert_txt(self, page_num, text):
         texts = text.split(SEPARATOR)
