@@ -44,7 +44,7 @@ class TextraConnection:
         self.page_array = None
         self.block_results = None
         self.pe._require_extracted()
-        if not any(self.pe.pages_info):
+        if not any(self.pe.pages_info) and not self.pe.has_selectable_text:
             raise PDFError('No translatable text found. Scanned PDFs need OCR before translation.')
         total = sum(map(len, self.pe.pages_info))
         completed = 0

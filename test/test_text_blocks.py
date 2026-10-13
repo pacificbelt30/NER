@@ -196,7 +196,7 @@ def test_pdf_preserves_code_and_places_literal_links_in_translated_flow(tmp_path
     with TextraConnection(path, config={'PRIORITY': 'INDEX'}) as connection:
         connection.get_pdf_info()
         blocks = connection.pe.pages_info[0]
-        assert any(block['txt'] == 'Installation' and block['role'] == 'heading' for block in blocks)
+        assert not any(block['txt'] == 'Installation' for block in blocks)
         assert len([block for block in blocks if block['role'] == 'list']) == 2
         assert not any('def translate_document' in block['txt'] for block in blocks)
         assert next(block for block in blocks if 'Call ' in block['txt'])['context'] == 'Installation'
@@ -223,7 +223,7 @@ def test_protected_output_error_leaves_original_and_existing_output_untouched(tm
     output.write_bytes(b'existing artifact')
     source_bytes = source.read_bytes()
     with TextraConnection(source, config={'PRIORITY': 'INDEX', 'INDEX': {
-        'replies': ['導入', '関数名が消えた訳文']}}) as connection:
+        'replies': ['関数名が消えた訳文']}}) as connection:
         connection.get_pdf_info()
         with pytest.raises(TranslationError, match='Protected token mismatch'):
             connection.post_page()

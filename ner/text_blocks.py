@@ -13,12 +13,14 @@ import regex
 from .errors import TranslationError
 
 
-RECIPE_VERSION = 'blocks-literals-sentence-clause-v1'
+RECIPE_VERSION = 'blocks-addresses-sentence-clause-v2'
 TOKEN = re.compile(r'\[\[NER_(\d+)\]\]')
 MODEL_TOKEN = re.compile(r'(?<![A-Za-z0-9_])X(\d+)(?![A-Za-z0-9_])')
 LITERAL = re.compile(
-    r'\[\[NER_\d+\]\]|\bX\d+\b|`[^`\n]+`|https?://[^\s<>`]+'
+    r'\[\[NER_\d+\]\]|\bX\d+\b|`[^`\n]+`|(?:https?://|ftp://|mailto:|www\.)[^\s<>`]+'
     r'|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}'
+    r'|\b(?:[A-Za-z0-9-]+\.)+(?:com|org|net|edu|gov|io|ai|dev|app|jp|co|test|example|invalid)'
+    r'\b(?:[/?:#][^\s<>`]*)?'
     r'|\b(?:\d{1,3}\.){3}\d{1,3}\b'
     r'|\b[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+\b'
     r'|(?:[A-Za-z]:\\|/(?:[\w.-]+/)+)[\w./\\-]*'
@@ -86,7 +88,8 @@ def prepare_block(block):
     for match in LITERAL.finditer(block.text):
         start, end = match.span()
         literal = match.group()
-        if literal.lower().startswith('http'):
+        if (literal.lower().startswith(('http://', 'https://', 'ftp://', 'mailto:', 'www.'))
+                or re.match(r'^(?:[A-Za-z0-9-]+\.)+(?:com|org|net|edu|gov|io|ai|dev|app|jp|co|test|example|invalid)\b', literal, re.I)):
             while end > start and block.text[end - 1] in '.,;!?':
                 end -= 1
             for closing, opening in ((')', '('), (']', '['), ('}', '{')):
@@ -112,7 +115,8 @@ def prepare_block(block):
     for index, span in enumerate(ranges):
         token = f'[[NER_{index}]]'
         original = block.text[span.start:span.end]
-        href = span.href or (original if span.kind == 'url' else None)
+        href = span.href or ((original if re.match(r'^(?:https?://|ftp://|mailto:)', original, re.I)
+                              else 'https://' + original) if span.kind == 'url' else None)
         parts.extend((block.text[cursor:span.start], token))
         spans.append(ProtectedSpan(token, original, span.kind, href))
         cursor = span.end

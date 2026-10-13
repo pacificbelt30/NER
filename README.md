@@ -563,3 +563,19 @@ Primary API references: [PyMuPDF text/HTML placement](https://pymupdf.readthedoc
 [pypdf extraction](https://pypdf.readthedocs.io/en/stable/user/extract-text.html),
 [pypdfium2 objects and rendering](https://pypdfium2.readthedocs.io/en/stable/python_api.html),
 [ReportLab paragraphs](https://docs.reportlab.com/reportlab/userguide/ch6_paragraphs/).
+
+### Automatic translation eligibility
+
+PDF extraction selects prose by word structure and protected literals rather than
+character count. Standalone words (`Installation`, `Ready`), acronym-only labels,
+numbers, addresses, identifiers, code, and predominantly non-Latin text remain
+in the original PDF. Short phrases (`Getting started`, `Go now.`) and instructions
+with protected objects (`Read https://example.org/`) are eligible. A skipped heading
+still provides context for subsequent prose. URLs, including `www.` / common bare
+domains, and email addresses inside prose are protected before translation.
+
+These are conservative heuristics for the current English-to-Japanese workflow,
+not a language detector or named-entity recognizer. Explicit calls to the translation
+service can still translate individual words. A selectable-text PDF with no eligible
+prose saves unchanged without model requests; an empty/scanned PDF still reports
+that OCR is needed. `PaperExtract.selection_decisions` records eligibility reasons.

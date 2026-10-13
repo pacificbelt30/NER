@@ -10,7 +10,8 @@ import pymupdf as fitz
 
 from .errors import ConfigurationError, PDFError
 from .io_utils import atomic_output
-from .text_blocks import LiteralRange, TOKEN, TranslationBlock, prepare_block
+from .text_blocks import LiteralRange, TranslationBlock, prepare_block
+from .translation_policy import translation_decision
 from .block_layout import PreparedPage, prepare_rich
 
 
@@ -21,6 +22,7 @@ class PaperExtract:
     def __init__(self, path='', font=''):
         self.path = str(Path(path).expanduser())
         self.pages_info = None
+        self.has_selectable_text = False
         self.doc = self._open()
         self.new_doc = self.doc
         try:
@@ -67,6 +69,8 @@ class PaperExtract:
 
     def extract_textinfo(self):
         pages = []
+        self.has_selectable_text = False
+        self.selection_decisions = []
         for page_num, page in enumerate(self.doc):
             blocks = []
             # Character geometry lets link ranges be associated with actual text,
@@ -82,6 +86,7 @@ class PaperExtract:
                     continue
                 all_spans = [span for line in block['lines'] for span in line['spans']
                              if ''.join(char['c'] for char in span['chars']).strip()]
+                self.has_selectable_text |= bool(all_spans)
                 all_monospace = bool(all_spans) and all(self._monospace(span) for span in all_spans)
                 source_lines = [''.join(char['c'] for span in line['spans'] for char in span['chars'])
                                 for line in block['lines']]
@@ -105,21 +110,23 @@ class PaperExtract:
                             if len(unit) <= 2 and font_size >= body_size * 1.25 else 'paragraph')
                     prepared = prepare_block(TranslationBlock(block_id, text, role,
                                                                protected_ranges=tuple(ranges)))
-                    prose = TOKEN.sub('', prepared.text)
-                    letters = len(re.sub(r'[^a-zA-Z]', '', prose))
-                    if letters < 2 or letters / max(1, len(prose.strip())) <= 0.4:
+                    decision = translation_decision(prepared)
+                    self.selection_decisions.append({'id': block_id, 'reason': decision.reason,
+                                                     'translate': decision.translate})
+                    previous_context = context
+                    if role == 'heading':
+                        context = text[:512]
+                    if not decision.translate:
                         continue
                     bbox = fitz.Rect()
                     for line in unit:
                         bbox |= fitz.Rect(line['bbox'])
                     blocks.append({
-                        'id': block_id, 'role': role, 'context': context,
+                        'id': block_id, 'role': role, 'context': previous_context,
                         'bbox': tuple(bbox), 'source_bbox': block['bbox'],
                         'fontsize': font_size, 'page': page_num, 'txt': text,
                         'lines': line_metadata, 'protected_ranges': [asdict(span) for span in ranges],
                     })
-                    if role == 'heading':
-                        context = text[:512]
             pages.append(blocks)
         self.pages_info = pages
 
