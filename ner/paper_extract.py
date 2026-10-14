@@ -270,24 +270,31 @@ class PaperExtract:
     def get_all_text(self):
         return ''.join(text + SEPARATOR for text in self.get_all_text_array(False))
 
+    def fill_page_blocks(self, page_num, excluded_ids=()):
+        self._require_extracted()
+        blocks = self.pages_info[page_num]
+        if not blocks:
+            return
+        page = self.new_doc[page_num]
+        selected = [block for block in blocks if block['id'] not in excluded_ids]
+        if not selected:
+            return
+        if any(annotation.type[0] == fitz.PDF_ANNOT_REDACT for annotation in page.annots() or ()):
+            raise PDFError('Page contains existing pending redaction annotations.')
+        for block in selected:
+            for line in block['lines']:
+                for span in line['spans']:
+                    rect = fitz.Rect(span['bbox'])
+                    if block.get('table_cell'):
+                        rect &= fitz.Rect(block['table_cell']['bbox'])
+                    page.add_redact_annot(rect, fill=False, cross_out=False)
+        page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
+                              graphics=fitz.PDF_REDACT_LINE_ART_NONE)
+
     def fill_all_blocks(self):
         self._require_extracted()
-        for page_num, blocks in enumerate(self.pages_info):
-            if not blocks:
-                continue
-            page = self.new_doc[page_num]
-            for block in blocks:
-                # Redact only selected source glyph runs: a layout rectangle may
-                # contain untouched labels, table backgrounds, or other cells.
-                for line in block['lines']:
-                    for span in line['spans']:
-                        rect = fitz.Rect(span['bbox'])
-                        if block.get('table_cell'):
-                            rect &= fitz.Rect(block['table_cell']['bbox'])
-                        page.add_redact_annot(rect, fill=False, cross_out=False)
-            # Preserve figures and vector graphics under the text rectangles.
-            page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
-                                  graphics=fitz.PDF_REDACT_LINE_ART_NONE)
+        for page_num in range(len(self.pages_info)):
+            self.fill_page_blocks(page_num)
 
     def visualize_blocks(self):
         self._require_extracted()
@@ -331,7 +338,7 @@ class PaperExtract:
                 high = middle - 1
         return low / 2
 
-    def prepare_page(self, page_num, texts, results=None):
+    def prepare_page(self, page_num, texts, results=None, on_error=None):
         self._require_extracted()
         blocks = self.pages_info[page_num]
         if len(blocks) != len(texts):
@@ -344,13 +351,21 @@ class PaperExtract:
         if results is not None and len(results) != len(blocks):
             raise PDFError(f'Page {page_num + 1}: structured translation block count does not match the PDF.')
         for index, (block, text) in enumerate(zip(blocks, texts)):
-            if not isinstance(text, str) or not text.strip():
-                raise PDFError(f'Page {page_num + 1}: empty or invalid translation.')
-            result = results[index] if results is not None else None
-            if result is None:
-                protected = prepare_block(TranslationBlock(block['id'], text))
-                result = BlockTranslation(block['id'], text, protected.text, protected.spans, 0)
-            plan = prepare_rich(page, block, result, self.font_path, space=space)
+            if text is None and on_error is not None:
+                continue  # Translation failure already reported by the workflow.
+            try:
+                if not isinstance(text, str) or not text.strip():
+                    raise PDFError(f'Page {page_num + 1}: empty or invalid translation.')
+                result = results[index] if results is not None else None
+                if result is None:
+                    protected = prepare_block(TranslationBlock(block['id'], text))
+                    result = BlockTranslation(block['id'], text, protected.text, protected.spans, 0)
+                plan = prepare_rich(page, block, result, self.font_path, space=space)
+            except (PDFError, RuntimeError, ValueError) as exc:
+                if on_error is None:
+                    raise
+                on_error(block, exc, text)
+                continue
             rich.append(plan)
             space.reserve(plan)
         return PreparedPage(None, rich)
@@ -372,6 +387,8 @@ class PaperExtract:
             self.new_doc.save(path, garbage=4)
 
     def close(self):
+        if self.new_doc is not self.doc and not self.new_doc.is_closed:
+            self.new_doc.close()
         if not self.doc.is_closed:
             self.doc.close()
 

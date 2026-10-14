@@ -47,7 +47,7 @@ def test_table_overflow_fails_before_redaction_or_replacing_output(tmp_path, mon
     fixture(source)
     output = tmp_path / 'table_new.pdf'
     output.write_bytes(b'previous artifact')
-    with TextraConnection(source, config={'PRIORITY': 'INDEX'}) as connection:
+    with TextraConnection(source, config={'PRIORITY': 'INDEX'}, error_policy='strict') as connection:
         connection.get_pdf_info()
         before = connection.pe.doc[0].get_text('rawdict')
         connection.post_page()

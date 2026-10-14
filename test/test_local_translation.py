@@ -173,7 +173,7 @@ def test_local_failure_does_not_create_successful_pdf(tmp_path, monkeypatch, ind
     source = tmp_path / 'paper.pdf'
     make_pdf(source)
     index_server.finish_reason = 'length'
-    connection = TextraConnection(str(source))
+    connection = TextraConnection(str(source), error_policy='strict')
     connection.get_pdf_info()
     with pytest.raises(RuntimeError, match='INDEX translation failed on page 1'):
         connection.post_page()

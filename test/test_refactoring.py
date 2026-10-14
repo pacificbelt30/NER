@@ -97,7 +97,7 @@ def test_online_failure_never_becomes_an_untranslated_success(tmp_path, stub_bac
     path.write_bytes(pdf_bytes())
     with TextraConnection(path, config={'PRIORITY': 'INDEX', 'INDEX': {
         'failures': [TranslationError('broken')],
-    }}) as connection:
+    }}, error_policy='strict') as connection:
         connection.get_pdf_info()
         with pytest.raises(TranslationError, match='page 1, block 1'):
             connection.post_page()
@@ -117,7 +117,7 @@ def test_invalid_pdf_is_rejected(tmp_path, content):
 def test_blank_pdf_translation_reports_missing_text(tmp_path, stub_backend):
     path = tmp_path / 'blank.pdf'
     path.write_bytes(pdf_bytes(''))
-    with TextraConnection(path, config={'PRIORITY': 'INDEX'}) as connection:
+    with TextraConnection(path, config={'PRIORITY': 'INDEX'}, error_policy='strict') as connection:
         connection.get_pdf_info()
         with pytest.raises(PDFError, match='No translatable text'):
             connection.post_page()

@@ -225,7 +225,7 @@ def test_protected_output_error_leaves_original_and_existing_output_untouched(tm
     output.write_bytes(b'existing artifact')
     source_bytes = source.read_bytes()
     with TextraConnection(source, config={'PRIORITY': 'INDEX', 'INDEX': {
-        'replies': ['関数名が消えた訳文']}}) as connection:
+        'replies': ['関数名が消えた訳文']}}, error_policy='strict') as connection:
         connection.get_pdf_info()
         with pytest.raises(TranslationError, match='Protected token mismatch'):
             connection.post_page()
