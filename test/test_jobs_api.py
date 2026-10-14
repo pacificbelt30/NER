@@ -209,6 +209,81 @@ def test_completed_job_survives_server_restart(api):
     assert api.get(f"/api/jobs/{job['id']}/files/translated").status_code == 200
 
 
+@pytest.mark.parametrize('failed_blocks', [1, 2])
+def test_recovered_pdf_is_downloadable_and_warnings_survive_restart(api, monkeypatch, failed_blocks):
+    from ner.translation import BACKENDS
+
+    class MixedBackend:
+        def __init__(self, config):
+            self.calls = 0
+
+        def translate_chunk(self, text, **kwargs):
+            self.calls += 1
+            if self.calls <= failed_blocks:
+                raise TranslationError('private-token=do-not-expose')
+            return '翻訳に成功した本文です。'
+
+        def close(self):
+            pass
+
+    monkeypatch.setitem(BACKENDS, 'INDEX', MixedBackend)
+    async def recover(workspace, config, output):
+        return api_server.translation_job_worker(workspace, config, output)
+    api_server.app.state.jobs.processor = recover
+    with pymupdf.open() as source:
+        page = source.new_page()
+        page.insert_text((40, 70), 'Translate the first paragraph.')
+        page.insert_text((40, 170), 'Translate the second paragraph.')
+        payload = source.tobytes()
+    job = submit(api, content=payload).json()
+    result = finished(api, job['id'])
+    assert result['status'] == 'succeeded'
+    assert result['result_summary']['outcome'] == ('partial' if failed_blocks == 1 else 'untranslated')
+    assert result['result_summary']['translated_blocks'] == 2 - failed_blocks
+    assert len(result['warnings']) == failed_blocks
+    assert 'private-token' not in str(result)
+    for kind in ('translated', 'comparison'):
+        download = api.get(result['downloads'][kind])
+        assert download.status_code == 200
+        with pymupdf.open(stream=download.content, filetype='pdf') as doc:
+            assert len(doc) == (2 if kind == 'translated' else 3)
+            assert '翻訳エラーレポート' in ''.join(doc[-1].get_text().split())
+    preview = api.get(f"/api/jobs/{job['id']}/preview/translated?page=1")
+    assert preview.status_code == 200 and preview.content.startswith(b'\x89PNG')
+    manager = api_server.JobManager(api_server.app.state.jobs.root, recover)
+    manager.start()
+    api_server.app.state.jobs = manager
+    restored = api.get(f"/api/jobs/{job['id']}").json()
+    assert restored['warnings'] == result['warnings']
+    assert restored['result_summary'] == result['result_summary']
+    assert api.get(restored['downloads']['translated']).status_code == 200
+
+
+def test_comparison_failure_keeps_translated_pdf_available(api, monkeypatch):
+    from ner.translation import BACKENDS
+    class Backend:
+        def __init__(self, config):
+            pass
+        def translate_chunk(self, text, **kwargs):
+            return '正常に翻訳された文章です。'
+        def close(self):
+            pass
+    monkeypatch.setitem(BACKENDS, 'INDEX', Backend)
+    def fail(self):
+        raise OSError('private path /secret')
+    monkeypatch.setattr(api_server.CombinePDF, 'combine', fail)
+    async def recover(workspace, config, output):
+        return api_server.translation_job_worker(workspace, config, output)
+    api_server.app.state.jobs.processor = recover
+    result = finished(api, submit(api).json()['id'])
+    assert result['status'] == 'succeeded'
+    assert result['result_summary']['outcome'] == 'complete_with_warnings'
+    assert result['warnings'][0]['code'] == 'COMPARISON_FAILED'
+    assert 'secret' not in str(result)
+    assert 'comparison' not in result['downloads']
+    assert api.get(result['downloads']['translated']).status_code == 200
+
+
 def test_interrupted_job_is_recoverable_after_restart(api):
     root = api_server.app.state.jobs.root
     job_id = uuid.uuid4().hex

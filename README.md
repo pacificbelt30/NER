@@ -427,17 +427,18 @@ fail validation; Japanese reordering is allowed. Index receives preservation
 instructions, block kind, and heading context. Bergamot receives masked text
 without adding the heading to its output. The per-document LRU cache separates
 block role/context, exact protected originals, and chunking recipe. Incomplete
-or invalid blocks are never cached. Unlike Otranslator's browser display fallback,
-NER aborts an invalid document rather than silently mixing untranslated failures
-into a successful PDF. There is no automatic switch to an online engine.
+or invalid blocks are never cached. Invalid translations are discarded; the source
+block is retained and explicitly marked in a warning PDF (see the error policy
+below). There is no automatic switch to an online engine.
 
 Protected inline runs flow with their translated paragraph using escaped HTML;
 literal URLs and linked labels get clickable hit areas in their new positions.
 The native Bergamot HTML/alignment mode is not needed. Japanese link fragments
 are normalized after insertion. All blocks share a 1pt floor and may grow by at
 most 36pt along each writing axis after checking column limits, other text,
-images, vector strokes and previously planned translations. If they still cannot fit, the
-PDF is not written. Standalone code retains exact positions; inline code can
+images, vector strokes and previously planned translations. If they still cannot fit,
+the source block stays in place and the validated translation is appended in full
+to the error report. Standalone code retains exact positions; inline code can
 move to follow Japanese word order. Paragraphs, headings and table cells use the
 same HTML placement path; mixed span styles and arbitrary skew remain limited.
 
@@ -639,9 +640,9 @@ At the user's request the minimum placement font size is **1pt**, including tabl
 cells, protected spans and the compatibility TextWriter size search. Translated
 text is never enlarged beyond the source size (source sizes below 1pt start at
 1pt). Complete fitting is still mandatory: long unbreakable words and text that
-cannot fit at 1pt fail before original text is redacted or an output is replaced.
+cannot fit at 1pt leave their original block unredacted and appear in the report.
 The earlier 8pt measurements above describe the previous policy. A per-block
-adjustment / review UI is deferred; overflow continues to fail the job.
+adjustment / review UI is deferred; overflow produces a warning PDF by default.
 
 All production PDF translations now use the same PyMuPDF HTML placement path,
 including ordinary prose, tables and protected literals. Plain and structured
@@ -656,8 +657,8 @@ translated sentence and arbitrary skew still need richer source/style mapping.
 1. Try the original rectangle at the source font size, with normal word wrapping.
 2. Try conservative expansion in verified free space, still at source size.
 3. If those frames cannot fit, choose the best fitting scale down to **1pt**.
-   If nothing fits, fail before redaction / output replacement. The deferred
-   per-block adjustment UI and partial-success behavior are not implemented.
+   If nothing fits, retain the original block and append the complete validated
+   translation to the error report. The per-block adjustment UI is deferred.
 
 `PageLayoutSpace` snapshots source glyphs, images, vector shapes and table regions
 once per page and reserves each chosen translation frame for subsequent blocks.
@@ -682,3 +683,57 @@ rectangles and font sizes in `benchmarks/pdf_library_results.json`.
 checks (including the 3,057-character / five-chunk block), native table containment
 (5/5 ruled, 6/6 regular borderless), and real CLI/API/Chromium acceptance. Generated
 PDF/PNG evidence is under `pdf/flow-layout/`. Library selection remains PyMuPDF.
+
+### Recoverable errors and downloadable warning PDFs
+
+`ERROR_POLICY: preserve` is the default. An accepted translation job should still
+produce a useful PDF when an individual translation or placement fails. Successful
+blocks translate normally. Failed blocks keep their original characters and
+positions, with a red outline and a PDF note; an appended Japanese report identifies
+the source page, block and safe error message. Original source files are untouched.
+
+| Failure | Output behavior |
+| --- | --- |
+| Translation request fails, or protected URL/code tokens are invalid | Retain the original block; annotate and report. Discard invalid or incomplete translations. |
+| Valid translation cannot be placed safely at 1pt or above, including unsupported skew | Retain the original block; annotate and append the **full validated translation**, paginated without truncation. |
+| Redaction or page rendering fails after partial modification | Rebuild from the untouched source, retain that entire original page, replay successful pages, and append validated translations from the failed page. Existing user redaction annotations are never applied. |
+| Backend initialization fails in the direct/CLI workflow | Return the original PDF with an explanation; no online fallback. API backend readiness is checked before a job is accepted. |
+| Extraction fails, or an image-only/blank PDF needs OCR | Return the original PDF with an extraction/OCR report. Selectable URLs/numbers with no eligible prose require neither translation nor an appendix. |
+| Specified font is unavailable | Use the standard Japanese font and include a notice. |
+| Comparison generation fails in a job | Keep the translated PDF downloadable; expose a safe API/UI warning and omit the unavailable comparison link. This post-save warning is outside the PDF report. |
+| Input is unreadable, encrypted or empty; saving fails; user cancels | Fail or cancel explicitly. An unreadable input or unwritable destination cannot produce a PDF. Atomic saving leaves any existing output intact. |
+
+Reports also include a JSON PDF attachment (`ner-translation-report.json`, with a
+unique suffix if that name already exists). It contains the structured errors and
+validated unplaced translations. Backend exception details, credentials and invalid
+model responses are not included. Comparison output interleaves only the source
+pages and appends the error-report pages after them.
+
+The API keeps `status: succeeded` for a successfully saved PDF, including warning
+PDFs. `result_summary.outcome` distinguishes `complete`, `partial`, `untranslated`
+and `complete_with_warnings`; counts include translated/retained blocks, warnings,
+source pages and report pages. `warnings` provides safe page/block/error details.
+These fields survive server restarts. The UI displays **注意付きPDFを作成しました**
+and exposes downloads even if every selected block failed. The CLI exits 0 when
+it saved a warning PDF and prints the warning counts to stderr.
+
+Set `ERROR_POLICY: strict`, or pass `error_policy='strict'` to `TextraConnection`,
+to retain the earlier behavior of raising on translation/placement errors without
+writing a new PDF.
+
+Validation: the full suite passes **226 tests**, including partial/total translation
+failure, literal corruption, full overflow-report pagination, rollback after a
+partial page write, font fallback, extraction failure, attachment collisions,
+atomic save failure, cancellation, warning persistence and API downloads. The
+native Bergamot CLI/API/Chromium acceptance also passes with an unsupported-skew
+fixture: one block translates, one is retained, and the appendix includes its valid
+translation. Browser downloads and reload recovery work with zero JavaScript errors.
+`benchmarks/error_recovery_results.json` records the acceptance results. PDF and
+browser evidence is under the ignored `pdf/error-recovery/` directory. Run:
+
+```sh
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/verify_end_to_end.py \
+  --worker /path/to/ner-bergamot-worker --model /path/to/config.yml \
+  --output pdf/error-recovery
+```

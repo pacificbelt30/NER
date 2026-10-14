@@ -29,6 +29,7 @@ from ner.api_models import Backend, JobView, Output
 from ner.errors import ConfigurationError, PDFError, TranslationCancelled, TranslationError
 from ner.io_utils import atomic_output
 from ner.jobs import JobExpired, JobManager, QueueFull
+from ner.pdf_warnings import PDFWarning
 
 
 logger = logging.getLogger(__name__)
@@ -171,10 +172,19 @@ def translation_job_worker(workspace, config, output):
         job.get_pdf_info()
         job.post_page(on_progress=progress, on_chunk_progress=chunk_progress)
         report('saving')
-        translated = job.insert()
+        translated = job.insert(check_cancel=check_cancel)
+        result = {'result_summary': job.result_summary,
+                  'warnings': [warning.view() for warning in job.warnings]}
     if output == 'comparison':
         report('combining')
-        CombinePDF(workspace / 'input.pdf', translated, workspace / 'comparison.pdf').combine()
+        try:
+            CombinePDF(workspace / 'input.pdf', translated, workspace / 'comparison.pdf').combine()
+        except (PDFError, OSError, RuntimeError, ValueError):
+            logger.warning('Comparison PDF could not be created; translated PDF remains available.')
+            result['warnings'].append(PDFWarning('COMPARISON_FAILED', 'combining').view())
+            result['result_summary']['warning_count'] += 1
+            if result['result_summary']['outcome'] == 'complete':
+                result['result_summary']['outcome'] = 'complete_with_warnings'
     report('previewing')
     try:
         preview_worker(str(workspace), 'original', 1)
@@ -182,6 +192,7 @@ def translation_job_worker(workspace, config, output):
     except (OSError, RuntimeError, ValueError):
         logger.warning('Initial page previews could not be rendered.')
     report('done')
+    return result
 
 
 def preview_worker(workspace, kind, page_number):
@@ -205,7 +216,7 @@ async def run_translation_job(workspace, config, output):
     future = asyncio.get_running_loop().run_in_executor(pool, translation_job_worker,
                                                        str(workspace), config, output)
     try:
-        await asyncio.shield(future)
+        return await asyncio.shield(future)
     except asyncio.CancelledError:
         try:
             await asyncio.shield(future)

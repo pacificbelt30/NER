@@ -75,6 +75,27 @@ def main():
         report['cli'] = {'info_without_config': True, 'native_translation': True,
                          'alternating_comparison': True, 'missing_file_nonzero': True, 'source_unchanged': True}
 
+        # Arbitrary skew is intentionally unsupported by the placement engine.
+        # Real Bergamot can translate it, and its full validated output must be
+        # retained in the appendix while another block still translates normally.
+        recovery_source = workspace / 'recovery.pdf'
+        with fitz.open() as document:
+            page = document.new_page()
+            page.insert_text((60, 160), 'This rotated paragraph cannot be placed safely.',
+                             morph=(fitz.Point(60, 160), fitz.Matrix(25)))
+            page.insert_text((60, 260), 'This paragraph can be translated normally.')
+            document.save(recovery_source)
+        recovery_digest = hashlib.sha256(recovery_source.read_bytes()).hexdigest()
+        recovery_cli = subprocess.run([*cli, 'translate', str(recovery_source)], cwd=workspace,
+                                      capture_output=True, text=True, timeout=90)
+        assert recovery_cli.returncode == 0 and 'Warning:' in recovery_cli.stderr, recovery_cli.stderr
+        with fitz.open(workspace / 'recovery_new.pdf') as document:
+            assert len(document) == 2
+            assert 'This rotated paragraph' in document[0].get_text()
+            assert '翻訳エラーレポート' in ''.join(document[1].get_text().split())
+        assert hashlib.sha256(recovery_source.read_bytes()).hexdigest() == recovery_digest
+        report['cli']['partial_failure_still_outputs_pdf'] = True
+
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))
             port = sock.getsockname()[1]
@@ -146,6 +167,21 @@ def main():
                 report['http'] = {'native_job_and_downloads': True, 'duplicate_receipt': True,
                     'page_preview': True, 'invalid_pdf_job_failed': True, 'running_cancel': True, 'retry': True}
 
+                recovered = wait_for_job(session, base,
+                    submit(recovery_source.read_bytes(), 'recovery.pdf')['id'])
+                assert recovered['status'] == 'succeeded', recovered
+                assert recovered['result_summary']['outcome'] == 'partial', recovered
+                assert recovered['result_summary']['translated_blocks'] == 1
+                assert recovered['warnings'][0]['code'] == 'LAYOUT_FAILED'
+                for kind, pages in (('translated', 2), ('comparison', 3)):
+                    response = session.get(base + recovered['downloads'][kind], timeout=30)
+                    assert response.ok
+                    with fitz.open(stream=response.content, filetype='pdf') as document:
+                        assert len(document) == pages
+                        assert '翻訳エラーレポート' in ''.join(document[-1].get_text().split())
+                    (output / f'recovery-{kind}.pdf').write_bytes(response.content)
+                report['http']['partial_failure_download_and_appendix'] = True
+
                 from playwright.sync_api import sync_playwright
                 with sync_playwright() as playwright:
                     browser = playwright.chromium.launch(headless=True, args=['--no-sandbox'])
@@ -196,6 +232,24 @@ def main():
                         report['browser'] = {'actual_upload_and_translation': True, 'png_preview': True,
                                              'decoded_previews_have_content': True,
                                              'reload_recovery': True, 'mobile_no_overflow': True, 'javascript_errors': errors}
+                        page.locator('#new-file-button').click()
+                        page.locator('#pdf-file').set_input_files(str(recovery_source))
+                        page.locator('#start-button').click()
+                        page.locator('#results').wait_for(state='visible', timeout=90000)
+                        assert '注意付きPDFを作成しました' in page.locator('#status-title').inner_text()
+                        assert '1 / 2 ブロック' in page.locator('#progress-detail').inner_text()
+                        check_preview()
+                        with page.expect_download() as download:
+                            page.locator('#download-translated').click()
+                        download.value.save_as(str(output / 'browser-recovery.pdf'))
+                        with fitz.open(output / 'browser-recovery.pdf') as document:
+                            assert len(document) == 2
+                        page.screenshot(path=str(output / 'recovery-mobile.png'), full_page=True)
+                        page.reload()
+                        page.locator('#results').wait_for(state='visible', timeout=30000)
+                        assert '注意付きPDFを作成しました' in page.locator('#status-title').inner_text()
+                        assert not errors, errors
+                        report['browser']['partial_failure_download_and_reload'] = True
                     finally:
                         browser.close()
             finally:

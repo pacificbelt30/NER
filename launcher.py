@@ -21,7 +21,13 @@ def translate(path='source.pdf'):
         connection.get_pdf_info()
         connection.print_pdf_info()
         connection.post_page()
-        return connection.insert()
+        output = connection.insert()
+        if connection.warnings:
+            summary = connection.result_summary
+            print(f"Warning: {summary['warning_count']} issue(s); "
+                  f"{summary['translated_blocks']}/{summary['total_blocks']} blocks translated. "
+                  'See the notices in the PDF error report.', file=sys.stderr)
+        return output
 
 
 def pdf_info(path='source.pdf'):

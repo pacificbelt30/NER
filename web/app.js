@@ -246,18 +246,24 @@ function renderJob(job) {
     completed_chunks: chunksDone = 0,
     total_chunks: chunksTotal = 0,
   } = job.progress;
+  const warningCount = job.result_summary?.warning_count || job.warnings?.length || 0;
+  const withWarnings = job.status === "succeeded" && warningCount > 0;
+  const hasReport = (job.result_summary?.report_pages || 0) > 0;
+  const warningDetail = hasReport
+    ? "原文を保持した箇所とエラー内容はPDFの注釈・末尾で確認できます。"
+    : (job.warnings || []).map(warning => warning.message).join(" ");
   const titles = {
     queued: "順番を待っています",
     running: "日本語に翻訳しています",
     cancelling: "翻訳を停止しています",
-    succeeded: "翻訳が完了しました",
+    succeeded: withWarnings ? "注意付きPDFを作成しました" : "翻訳が完了しました",
     failed: "翻訳を完了できませんでした",
     cancelled: "翻訳を停止しました",
   };
   if ($("status-title").textContent !== titles[job.status]) $("status-title").textContent = titles[job.status];
   const statusLabel =
     {
-      succeeded: "COMPLETED",
+      succeeded: withWarnings ? "READY WITH NOTES" : "COMPLETED",
       failed: "PLEASE TRY AGAIN",
       cancelled: "STOPPED",
     }[job.status] || "TRANSLATING";
@@ -280,7 +286,9 @@ function renderJob(job) {
                   : stage === "previewing"
                     ? "読み比べるためのプレビューを準備しています。"
                     : job.status === "succeeded"
-                      ? `${pages}ページの翻訳が完了しました。`
+                      ? withWarnings
+                        ? `${job.result_summary?.translated_blocks || 0} / ${job.result_summary?.total_blocks || total} ブロックを翻訳しました。${warningCount}件の注意点があります。${warningDetail}`
+                        : `${pages}ページの翻訳が完了しました。`
                       : total
                         ? `${done} / ${total} ブロック · ${page || 1} / ${pages} ページ${chunksTotal > 1 ? ` · 分割 ${chunksDone} / ${chunksTotal}` : ""}`
                         : "翻訳を準備しています。";
@@ -291,7 +299,11 @@ function renderJob(job) {
   $("status-hint").textContent = active
     ? "このページを開き直しても、処理中の翻訳を確認できます。"
     : job.status === "succeeded"
-      ? "結果は完了後1時間保存されます。必要なPDFを保存してください。"
+      ? withWarnings
+        ? hasReport
+          ? "PDFは保存できます。エラー一覧と配置できなかった訳文は、ダウンロードするPDFの末尾に掲載しています。"
+          : "翻訳PDFは保存できます。上記の注意点を確認してください。"
+        : "結果は完了後1時間保存されます。必要なPDFを保存してください。"
       : job.status === "failed" && !job.error?.retryable
         ? "別のPDFを選んでお試しください。"
         : "翻訳方式を変更して、同じPDFで再試行することもできます。";
@@ -300,6 +312,9 @@ function renderJob(job) {
 
 function showResults(job) {
   $("results").hidden = false;
+  const untranslated = job.result_summary?.outcome === "untranslated";
+  $("results-title").textContent = untranslated ? "原文とエラーレポートを読む" : "翻訳したPDFを読む";
+  $("download-translated").textContent = untranslated ? "原文・エラーPDFを保存 ↓" : "訳文PDFを保存 ↓";
   $("download-translated").href = job.downloads.translated;
   $("download-comparison").hidden = !job.downloads.comparison;
   if (job.downloads.comparison)

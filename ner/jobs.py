@@ -105,6 +105,7 @@ class JobManager:
             'id': job_id, 'filename': filename, 'backend': backend, 'output': output,
             'status': 'queued', 'created_at': now, 'updated_at': now,
             'expires_at': None, 'error': None,
+            'warnings': [], 'result_summary': None,
             'submission_key': submission_key,
         }
         self._save(job)
@@ -121,7 +122,9 @@ class JobManager:
                     return
                 job.update(status='running', updated_at=time.time())
                 self._save(job)
-                await self.processor(workspace, config, job['output'])
+                result = await self.processor(workspace, config, job['output'])
+                if result is not None:
+                    job.update(warnings=result.get('warnings', []), result_summary=result.get('result_summary'))
                 job['status'] = 'cancelled' if job['status'] == 'cancelling' else 'succeeded'
         except TranslationCancelled:
             job['status'] = 'cancelled'
@@ -172,7 +175,7 @@ class JobManager:
         downloads = None
         if job['status'] == 'succeeded':
             downloads = {kind: f'/api/jobs/{job_id}/files/{kind}' for kind in ('original', 'translated')}
-            if job['output'] == 'comparison':
+            if job['output'] == 'comparison' and (self.root / job_id / 'comparison.pdf').is_file():
                 downloads['comparison'] = f'/api/jobs/{job_id}/files/comparison'
         return {
             **{k: job[k] for k in ('id', 'filename', 'backend', 'output', 'status', 'error')},
@@ -180,6 +183,7 @@ class JobManager:
             'expires_at': timestamp(job['expires_at']) if job['expires_at'] else None,
             'queue_position': queued.index(job_id) + 1 if job_id in queued else None,
             'progress': progress, 'downloads': downloads,
+            'warnings': job.get('warnings', []), 'result_summary': job.get('result_summary'),
         }
 
     def cancel(self, job_id):

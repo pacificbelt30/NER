@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 Backend = Literal['INDEX', 'BERGAMOT', 'GOOGLE', 'TEXTRA']
@@ -24,6 +24,24 @@ class ProgressView(BaseModel):
     total_chunks: int = 0
 
 
+class WarningView(BaseModel):
+    code: str
+    stage: str
+    page: int | None = None
+    block_id: str | None = None
+    message: str
+
+
+class ResultSummaryView(BaseModel):
+    outcome: Literal['complete', 'partial', 'untranslated', 'complete_with_warnings']
+    total_blocks: int
+    translated_blocks: int
+    retained_blocks: int
+    warning_count: int
+    source_pages: int
+    report_pages: int
+
+
 class JobView(BaseModel):
     id: str
     filename: str
@@ -37,3 +55,5 @@ class JobView(BaseModel):
     progress: ProgressView
     error: ErrorView | None
     downloads: dict[str, str] | None
+    warnings: list[WarningView] = Field(default_factory=list)
+    result_summary: ResultSummaryView | None = None
