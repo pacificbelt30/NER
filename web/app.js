@@ -1,7 +1,8 @@
-"use strict";
-
-const $ = (id) => document.getElementById(id);
-const ACTIVE = new Set(["queued", "running", "cancelling"]);
+import { $, ACTIVE, size, wait, request } from "./api.js";
+import { progress, renderJob as renderJobView } from "./job-view.js";
+import { createPreview } from "./preview.js";
+import { createHistory } from "./history.js";
+import { createSettings } from "./settings.js";
 const STORAGE = "ner:last-job:v1";
 const state = {
   file: null,
@@ -12,10 +13,41 @@ const state = {
   capabilities: null,
   busy: false,
   version: 0,
-  expiryTimer: null,
-  previewPage: 1,
-  previewVersion: 0,
 };
+const preview = createPreview(() => state.job, renderJob, expiredJob);
+const history = createHistory(async id => {
+  if (state.xhr) throw new Error("アップロードが完了してから履歴を開いてください。");
+  const job = await request(`/api/jobs/${id}`);
+  if (state.xhr) throw new Error("アップロードが完了してから履歴を開いてください。");
+  newFile();
+  selectJobOptions(job);
+  track(job);
+  location.hash = "translate";
+  showView();
+  $("status-card").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+const settings = createSettings();
+
+function showView() {
+  const view = ["history", "settings"].includes(location.hash.slice(1))
+    ? location.hash.slice(1) : "translate";
+  for (const name of ["translate", "history", "settings"]) {
+    $(`${name}-view`).hidden = name !== view;
+    if (name === view) $(`nav-${name}`).setAttribute("aria-current", "page");
+    else $(`nav-${name}`).removeAttribute("aria-current");
+  }
+  document.title = `${view === "history" ? "翻訳履歴" : view === "settings" ? "設定" : "PDF翻訳"} — NER`;
+  if (view === "history") void history.load();
+  if (view === "settings") void settings.load();
+}
+window.addEventListener("hashchange", showView);
+
+function renderJob(job) {
+  const previousStatus = state.job?.status;
+  renderJobView(state, job, { controls, remember, showResults: preview.render });
+  $("upload-panel").hidden = job.status === "succeeded" || ACTIVE.has(job.status);
+  if (previousStatus !== job.status && location.hash === "#history") void history.load();
+}
 
 function remember(value) {
   try {
@@ -39,51 +71,8 @@ function connection(message) {
   if ($("connection-note").textContent !== (message || "")) $("connection-note").textContent = message || "";
   $("connection-note").hidden = !message;
 }
-function size(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
-  const value = bytes / (1024 * 1024);
-  return `${Number.isInteger(value) ? value : value.toFixed(1)} MiB`;
-}
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 function selectedOutput() {
   return document.querySelector('input[name="output"]:checked').value;
-}
-
-async function request(url, options = {}) {
-  let response;
-  try {
-    response = await fetch(url, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(12000),
-      ...options,
-    });
-  } catch {
-    const error = new Error(
-      "サーバーとの通信を確認できません。接続を確認してください。",
-    );
-    error.network = true;
-    throw error;
-  }
-  let body;
-  try {
-    body = await response.json();
-  } catch {
-    throw new Error(
-      "サーバーの応答を読み取れませんでした。もう一度お試しください。",
-    );
-  }
-  if (!response.ok) {
-    const error = new Error(
-      body.error?.message || body.detail || "処理に失敗しました。",
-    );
-    error.code = body.error?.code;
-    error.status = response.status;
-    throw error;
-  }
-  return body;
 }
 
 function controls(busy) {
@@ -108,6 +97,13 @@ function backendNote() {
   $("backend-note").textContent = backend?.local
     ? "本文を外部の翻訳サービスへ送らず、サーバー上で翻訳します。"
     : "本文を外部の翻訳サービスへ送信して翻訳します。";
+}
+
+function selectJobOptions(job) {
+  if (state.capabilities?.backends.find(b => b.id === job.backend)?.configured)
+    $("backend").value = job.backend;
+  document.querySelector(`input[name="output"][value="${job.output}"]`).checked = true;
+  backendNote();
 }
 
 async function loadCapabilities() {
@@ -175,19 +171,18 @@ function resetJob() {
   state.version++;
   state.job = null;
   state.key = null;
-  state.previewPage = 1;
-  state.previewVersion++;
-  clearTimeout(state.expiryTimer);
+  preview.clear();
   remember(null);
   $("status-card").hidden = true;
   $("results").hidden = true;
+  $("upload-panel").hidden = false;
   $("original-frame").removeAttribute("src");
   $("translated-frame").removeAttribute("src");
   connection("");
 }
 
 function newFile() {
-  if (state.busy) return;
+  if (state.xhr) return;
   resetJob();
   if (state.blob) URL.revokeObjectURL(state.blob);
   state.file = null;
@@ -202,208 +197,6 @@ function newFile() {
   controls(false);
   $("pdf-file").focus();
 }
-
-function progress(percent) {
-  const indeterminate = percent == null;
-  $("progress-track").classList.toggle("indeterminate", indeterminate);
-  if (indeterminate) {
-    $("progress-fill").style.width = "";
-    $("progress-track").removeAttribute("aria-valuenow");
-    $("progress-percent").textContent = "";
-  } else {
-    const bounded = Math.max(0, Math.min(100, percent));
-    $("progress-track").setAttribute("aria-valuenow", String(bounded));
-    $("progress-fill").style.width = `${bounded}%`;
-    $("progress-percent").textContent = `${Math.floor(bounded)}%`;
-  }
-}
-
-function renderJob(job) {
-  state.job = job;
-  remember({ id: job.id, key: state.key });
-  $("status-card").hidden = false;
-  $("status-card").className = `status-card ${job.status}`;
-  $("status-filename").textContent = job.filename;
-  const active = ACTIVE.has(job.status);
-  controls(active);
-  $("cancel-button").hidden = !active;
-  $("cancel-button").disabled = job.status === "cancelling";
-  $("cancel-button").textContent =
-    job.status === "cancelling" ? "停止しています…" : "翻訳を停止";
-  $("retry-button").hidden = !(
-    job.status === "cancelled" ||
-    (job.status === "failed" && job.error?.retryable)
-  );
-  $("retry-button").textContent = "同じPDFで再試行";
-  $("retry-button").disabled = false;
-  $("new-file-button").hidden = active;
-  const {
-    stage,
-    completed_blocks: done,
-    total_blocks: total,
-    page,
-    pages,
-    completed_chunks: chunksDone = 0,
-    total_chunks: chunksTotal = 0,
-  } = job.progress;
-  const warningCount = job.result_summary?.warning_count || job.warnings?.length || 0;
-  const withWarnings = job.status === "succeeded" && warningCount > 0;
-  const hasReport = (job.result_summary?.report_pages || 0) > 0;
-  const warningDetail = hasReport
-    ? "原文を保持した箇所とエラー内容はPDFの注釈・末尾で確認できます。"
-    : (job.warnings || []).map(warning => warning.message).join(" ");
-  const titles = {
-    queued: "順番を待っています",
-    running: "日本語に翻訳しています",
-    cancelling: "翻訳を停止しています",
-    succeeded: withWarnings ? "注意付きPDFを作成しました" : "翻訳が完了しました",
-    failed: "翻訳を完了できませんでした",
-    cancelled: "翻訳を停止しました",
-  };
-  if ($("status-title").textContent !== titles[job.status]) $("status-title").textContent = titles[job.status];
-  const statusLabel =
-    {
-      succeeded: withWarnings ? "READY WITH NOTES" : "COMPLETED",
-      failed: "PLEASE TRY AGAIN",
-      cancelled: "STOPPED",
-    }[job.status] || "TRANSLATING";
-  if ($("status-label").textContent !== statusLabel) $("status-label").textContent = statusLabel;
-  $("progress-detail").textContent =
-    job.status === "queued"
-      ? `待ち順：${job.queue_position || 1}番目`
-      : job.status === "cancelling"
-        ? "現在処理中の翻訳が終わると停止します。"
-        : job.status === "failed"
-          ? job.error?.message || "時間を置いてもう一度お試しください。"
-          : job.status === "cancelled"
-            ? "同じPDFで再試行するか、別のPDFを選べます。"
-            : stage === "extracting"
-              ? "PDFの本文を確認しています。"
-              : stage === "saving"
-                ? "訳文をPDFに配置しています。"
-                : stage === "combining"
-                  ? "原文と訳文の比較用PDFを作成しています。"
-                  : stage === "previewing"
-                    ? "読み比べるためのプレビューを準備しています。"
-                    : job.status === "succeeded"
-                      ? withWarnings
-                        ? `${job.result_summary?.translated_blocks || 0} / ${job.result_summary?.total_blocks || total} ブロックを翻訳しました。${warningCount}件の注意点があります。${warningDetail}`
-                        : `${pages}ページの翻訳が完了しました。`
-                      : total
-                        ? `${done} / ${total} ブロック · ${page || 1} / ${pages} ページ${chunksTotal > 1 ? ` · 分割 ${chunksDone} / ${chunksTotal}` : ""}`
-                        : "翻訳を準備しています。";
-  const completed = done + (stage === "translating" && chunksTotal ? Math.min(1, chunksDone / chunksTotal) : 0);
-  const percent =
-    job.status === "succeeded" ? 100 : total ? (Math.min(total, completed) / total) * 90 : null;
-  progress(percent);
-  $("status-hint").textContent = active
-    ? "このページを開き直しても、処理中の翻訳を確認できます。"
-    : job.status === "succeeded"
-      ? withWarnings
-        ? hasReport
-          ? "PDFは保存できます。エラー一覧と配置できなかった訳文は、ダウンロードするPDFの末尾に掲載しています。"
-          : "翻訳PDFは保存できます。上記の注意点を確認してください。"
-        : "結果は完了後1時間保存されます。必要なPDFを保存してください。"
-      : job.status === "failed" && !job.error?.retryable
-        ? "別のPDFを選んでお試しください。"
-        : "翻訳方式を変更して、同じPDFで再試行することもできます。";
-  if (job.status === "succeeded") showResults(job);
-}
-
-function showResults(job) {
-  $("results").hidden = false;
-  const untranslated = job.result_summary?.outcome === "untranslated";
-  $("results-title").textContent = untranslated ? "原文とエラーレポートを読む" : "翻訳したPDFを読む";
-  $("download-translated").textContent = untranslated ? "原文・エラーPDFを保存 ↓" : "訳文PDFを保存 ↓";
-  $("download-translated").href = job.downloads.translated;
-  $("download-comparison").hidden = !job.downloads.comparison;
-  if (job.downloads.comparison)
-    $("download-comparison").href = job.downloads.comparison;
-  for (const kind of ["original", "translated"]) {
-    const url = `${job.downloads[kind]}?inline=true`;
-    $(`open-${kind}`).href = url;
-  }
-  if ($("results").dataset.job !== job.id) {
-    $("results").dataset.job = job.id;
-    state.previewPage = 1;
-    void showPage(1);
-  }
-  $("expiry-note").textContent =
-    `保存期限：${new Date(job.expires_at).toLocaleString("ja-JP")}（このページを閉じても再取得できます）`;
-  clearTimeout(state.expiryTimer);
-  const remaining = Date.parse(job.expires_at) - Date.now();
-  state.expiryTimer = setTimeout(
-    () => {
-      if (state.job?.id === job.id)
-        request(`/api/jobs/${job.id}`).catch(expiredJob);
-    },
-    Math.max(0, remaining) + 100,
-  );
-}
-
-async function showPage(page) {
-  if (!state.job || state.job.status !== "succeeded") return;
-  const pages = Math.max(1, state.job.progress.pages);
-  state.previewPage = Math.max(1, Math.min(pages, page));
-  const version = ++state.previewVersion;
-  $("page-position").textContent = `${state.previewPage} / ${pages} ページ`;
-  $("previous-page").disabled = true;
-  $("next-page").disabled = true;
-  $("preview-status").textContent = "ページを読み込んでいます…";
-  const jobId = state.job.id;
-  try {
-    const images = await Promise.all(
-      ["original", "translated"].map(
-        (kind) =>
-          new Promise((resolve, reject) => {
-            const image = new Image();
-            image.onload = () => resolve({ kind, image });
-            image.onerror = () =>
-              reject(
-                new Error(
-                  "ページを表示できませんでした。PDFを別タブで開くか、ダウンロードしてください。",
-                ),
-              );
-            image.src = `/api/jobs/${jobId}/preview/${kind}?page=${state.previewPage}`;
-          }),
-      ),
-    );
-    if (version !== state.previewVersion) return;
-    for (const { kind, image } of images) {
-      $(`${kind}-frame`).src = image.src;
-      $(`${kind}-frame`).alt =
-        `${kind === "original" ? "原文" : "日本語訳"} ${state.previewPage}ページ`;
-    }
-    document.querySelectorAll(".page-scroll").forEach((pane) => {
-      pane.scrollTop = 0;
-      pane.scrollLeft = 0;
-    });
-    $("preview-status").textContent =
-      "原文と日本語訳の同じページを表示しています。";
-  } catch (error) {
-    if (version === state.previewVersion)
-      $("preview-status").textContent = error.message;
-  } finally {
-    if (version === state.previewVersion) {
-      $("previous-page").disabled = state.previewPage === 1;
-      $("next-page").disabled = state.previewPage === pages;
-    }
-  }
-}
-
-$("previous-page").addEventListener(
-  "click",
-  () => void showPage(state.previewPage - 1),
-);
-$("next-page").addEventListener(
-  "click",
-  () => void showPage(state.previewPage + 1),
-);
-$("preview-zoom").addEventListener("change", () => {
-  document.querySelectorAll(".page-image").forEach((image) => {
-    image.style.width = `${$("preview-zoom").value}%`;
-  });
-});
 
 function expiredJob(error) {
   if (![404, 410].includes(error.status)) {
@@ -592,6 +385,9 @@ $("backend").addEventListener("change", backendNote);
 $("refresh-settings").addEventListener("click", () => void loadCapabilities());
 $("remove-file").addEventListener("click", newFile);
 $("new-file-button").addEventListener("click", newFile);
+document.querySelectorAll('a[href="#translate"]').forEach(link => {
+  link.addEventListener("click", newFile);
+});
 $("preview-original").addEventListener("click", () => {
   if (state.blob) {
     $("local-frame").src = state.blob;
@@ -655,15 +451,7 @@ async function restore(saved) {
         saved.id ? `/api/jobs/${saved.id}` : `/api/jobs/by-key/${saved.key}`,
       );
       if (version !== state.version) return;
-      if (
-        state.capabilities?.backends.find((b) => b.id === job.backend)
-          ?.configured
-      )
-        $("backend").value = job.backend;
-      document.querySelector(
-        `input[name="output"][value="${job.output}"]`,
-      ).checked = true;
-      backendNote();
+      selectJobOptions(job);
       track(job);
       return;
     } catch (error) {
@@ -686,6 +474,8 @@ async function restore(saved) {
 }
 
 (async function initialize() {
+  showView();
+  if (location.hash !== "#settings") void settings.load();
   await loadCapabilities();
   const saved = recalled();
   if (saved?.id || saved?.key) await restore(saved);

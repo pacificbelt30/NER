@@ -68,6 +68,10 @@ def test_ui_assets_and_api_schema_are_served(api):
     assert '/api/jobs/{job_id}/retry' in schema['paths']
     assert 'JobView' in schema['components']['schemas']
     assert 'get' in schema['paths']['/api/jobs']
+    for name in ('api', 'history', 'job-view', 'preview', 'settings'):
+        module = api.get(f'/assets/{name}.js')
+        assert module.status_code == 200
+        assert 'javascript' in module.headers['content-type']
 
 
 def test_history_search_filters_pagination_and_downloads(api):

@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-15",
+  "default_retention_days": null,
+  "retention_changes": "Apply to subsequent job completions; existing deadlines remain unchanged.",
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 244
+  },
+  "native_acceptance": {
+    "cli": {
+      "info_without_config": true,
+      "native_translation": true,
+      "alternating_comparison": true,
+      "missing_file_nonzero": true,
+      "source_unchanged": true,
+      "partial_failure_still_outputs_pdf": true
+    },
+    "http": {
+      "native_job_and_downloads": true,
+      "duplicate_receipt": true,
+      "page_preview": true,
+      "invalid_pdf_job_failed": true,
+      "running_cancel": true,
+      "retry": true,
+      "partial_failure_download_and_appendix": true,
+      "history_settings_and_download_survive_restart": true
+    },
+    "browser": {
+      "actual_upload_and_translation": true,
+      "png_preview": true,
+      "decoded_previews_have_content": true,
+      "reload_recovery": true,
+      "mobile_no_overflow": true,
+      "javascript_errors": [],
+      "partial_failure_download_and_reload": true,
+      "server_history_without_browser_storage": true,
+      "history_search_filter_download_reopen": true,
+      "retention_settings_saved_from_ui": true
+    }
+  },
+  "artifacts": "pdf/history-ui/",
+  "backend": "Native Firefox Bergamot en-ja",
+  "browser": "Playwright Chromium, 1280x960 and 390x844",
+  "scope": "Shared history and settings for clients of the existing single API server."
+}

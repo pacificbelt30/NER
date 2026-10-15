@@ -103,9 +103,9 @@ def main():
         env = dict(os.environ, NER_CONFIG_PATH=str(workspace / 'config.yml'),
                    NER_STORAGE_PATH=str(workspace / 'storage'))
         with (workspace / 'server.log').open('w+') as log:
-            server = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'api_server:app',
-                                       '--host', '127.0.0.1', '--port', str(port)],
-                                      cwd=ROOT, env=env, stdout=log, stderr=log)
+            server_command = [sys.executable, '-m', 'uvicorn', 'api_server:app',
+                              '--host', '127.0.0.1', '--port', str(port)]
+            server = subprocess.Popen(server_command, cwd=ROOT, env=env, stdout=log, stderr=log)
             session = requests.Session()
             session.trust_env = False
             try:
@@ -250,8 +250,86 @@ def main():
                         assert '注意付きPDFを作成しました' in page.locator('#status-title').inner_text()
                         assert not errors, errors
                         report['browser']['partial_failure_download_and_reload'] = True
+
+                        page.locator('#nav-history').click()
+                        page.locator(f'.history-row[data-job="{receipt["id"]}"]').wait_for()
+                        assert page.locator(f'.history-row[data-job="{recovered["id"]}"] .warning').count() == 1
+                        page.locator('#history-search').fill('recovery')
+                        page.wait_for_function('''[...document.querySelectorAll('.history-filename')]
+                            .length > 0 && [...document.querySelectorAll('.history-filename')]
+                            .every(node => node.textContent.includes('recovery'))''')
+                        page.locator('#history-status').select_option('failed')
+                        page.locator('#history-empty').wait_for(state='visible')
+                        page.locator('#history-search').fill('')
+                        page.locator('#history-status').select_option('succeeded')
+                        target = page.locator(f'.history-row[data-job="{receipt["id"]}"]')
+                        target.wait_for()
+                        with page.expect_download() as download:
+                            target.get_by_role('link', name='sample.pdfの訳文PDFを保存', exact=True).click()
+                        download.value.save_as(str(output / 'history-download.pdf'))
+                        with fitz.open(output / 'history-download.pdf') as document:
+                            assert len(document) == 2
+                        target.get_by_role('button').click()
+                        page.locator('#results').wait_for(state='visible')
+                        assert page.locator('#results').get_attribute('data-job') == receipt['id']
+                        check_preview()
+                        page.locator('#nav-settings').click()
+                        page.wait_for_function('!document.querySelector("#settings-save").disabled')
+                        assert page.locator('#retention-mode').input_value() == 'forever'
+                        page.locator('#retention-mode').select_option('days')
+                        page.locator('#retention-days').fill('7')
+                        page.locator('#settings-save').click()
+                        page.wait_for_function('document.querySelector("#settings-message").textContent.includes("保存しました")')
+                        assert session.get(base + '/api/settings', timeout=10).json() == {'retention_days': 7}
+                        # Existing permanent records keep their deadline; the new policy
+                        # is deliberately applied only to subsequent completions.
+                        assert session.get(base + f'/api/jobs/{receipt["id"]}', timeout=10).json()['expires_at'] is None
+                        page.screenshot(path=str(output / 'settings-mobile.png'), full_page=True)
+                        page.locator('#retention-mode').select_option('forever')
+                        page.locator('#settings-save').click()
+                        page.wait_for_function('document.querySelector("#settings-message").textContent.includes("保存しました")')
+                        assert session.get(base + '/api/settings', timeout=10).json() == {'retention_days': None}
+
+                        # No browser receipt is needed to find prior server-side jobs.
+                        context = browser.new_context(viewport={'width': 1280, 'height': 960})
+                        fresh = context.new_page()
+                        fresh.on('pageerror', lambda error: errors.append(str(error)))
+                        fresh.goto(base + '/#history')
+                        fresh.locator(f'.history-row[data-job="{receipt["id"]}"]').wait_for()
+                        fresh.screenshot(path=str(output / 'history-desktop.png'), full_page=True)
+                        fresh.set_viewport_size({'width': 390, 'height': 844})
+                        assert fresh.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        fresh.screenshot(path=str(output / 'history-mobile.png'), full_page=True)
+                        fresh.locator('#nav-translate').click()
+                        fresh.locator('#upload-panel').wait_for(state='visible')
+                        fresh.screenshot(path=str(output / 'upload-mobile.png'), full_page=True)
+                        context.close()
+                        assert not errors, errors
+                        report['browser']['server_history_without_browser_storage'] = True
+                        report['browser']['history_search_filter_download_reopen'] = True
+                        report['browser']['retention_settings_saved_from_ui'] = True
                     finally:
                         browser.close()
+                server.terminate()
+                server.wait(timeout=15)
+                server = subprocess.Popen(server_command, cwd=ROOT, env=env, stdout=log, stderr=log)
+                deadline = time.monotonic() + 30
+                while True:
+                    try:
+                        restarted = session.get(base + '/api/jobs', timeout=1)
+                        if restarted.ok:
+                            break
+                    except requests.RequestException:
+                        pass
+                    assert server.poll() is None and time.monotonic() < deadline
+                    time.sleep(0.05)
+                assert any(job['id'] == receipt['id'] for job in restarted.json()['items'])
+                assert session.get(base + '/api/settings', timeout=10).json() == {'retention_days': None}
+                saved = session.get(base + recovered['downloads']['translated'], timeout=10)
+                assert saved.ok
+                with fitz.open(stream=saved.content, filetype='pdf') as document:
+                    assert len(document) == 2
+                report['http']['history_settings_and_download_survive_restart'] = True
             finally:
                 session.close()
                 server.terminate()

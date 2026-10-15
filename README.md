@@ -259,6 +259,20 @@ downloads. Completed PDFs can be compared with synchronized page navigation and
 zoom. The comparison preview uses bounded server-rendered PNG pages, so it does
 not depend on a browser's embedded PDF viewer. Downloads retain selectable PDF text.
 
+The workspace has three views: **新しく翻訳**, **翻訳履歴**, and **設定**.
+History lists server-side jobs newest first, with filename search, status filters,
+pagination, warning badges, result reopening and direct original/translated/comparison
+downloads. It includes failed and cancelled jobs so they can be inspected or retried.
+History is independent of the browser's last-job receipt and remains available
+from a fresh browser or after an API server restart. Starting a new translation
+does not cancel a previously submitted job; it can be followed from history.
+
+The frontend remains build-free: `app.js` coordinates jobs and navigation, while
+`api.js`, `job-view.js`, `preview.js`, `history.js`, and `settings.js` handle requests,
+progress, PDF previews, history and retention settings. Dynamic filenames and error
+messages are inserted as text. Preview requests are versioned so a late response
+from one document cannot replace another document's pages.
+
 The UI remembers the most recent receipt in browser storage. Reloading restores
 the job; temporary connection failures reconnect automatically. Failed jobs can
 reuse the uploaded file and select another engine. Setup labels indicate validated
@@ -270,6 +284,7 @@ New clients should use the job API:
 | Method | Endpoint | Behavior |
 | --- | --- | --- |
 | GET | `/api/capabilities` | Languages, upload limit, configured engines, retention period |
+| GET | `/api/jobs?q=&status=&limit=20&offset=0` | Newest-first history; case-insensitive filename search; exact status filter; returns `items`, `total`, `limit`, `offset` |
 | POST | `/api/jobs` | Multipart `file`, optional `backend`, and `output=translated\|comparison`; returns HTTP 202 |
 | GET | `/api/jobs/{id}` | State, queue position, block/page and current-chunk progress, error, and download links |
 | GET | `/api/jobs/by-key/{key}` | Recover a receipt after an uncertain upload response |
@@ -277,6 +292,8 @@ New clients should use the job API:
 | POST | `/api/jobs/{id}/retry` | Reuse a failed/cancelled upload; optional multipart `backend` and `output`; returns a new job |
 | GET | `/api/jobs/{id}/files/{kind}` | Download `original`, `translated`, or `comparison`; `?inline=true` opens the PDF |
 | GET | `/api/jobs/{id}/preview/{kind}?page=1` | PNG preview of an `original` or `translated` page |
+| GET | `/api/settings` | Server retention policy: `{"retention_days": null}` means permanent storage |
+| PUT | `/api/settings` | Save `{"retention_days": null}` or an integer from 1–3650 days |
 
 Example:
 
@@ -292,8 +309,15 @@ poll that URL about once per second, respecting `Retry-After`. States are `queue
 `running`, `cancelling`, `succeeded`, `failed`, and `cancelled`. Completion is reported
 only after the PDF files are ready. Preview failure does not discard a completed PDF.
 
-Successful and failed job workspaces are retained for one hour after completion,
-allowing repeated downloads and retries. Expired workspaces are removed. Metadata
+Job workspaces and PDF history are retained **permanently by default**, allowing
+repeated downloads and retries. The **設定** view can set a finite number of days
+or restore permanent retention. This server-wide setting is saved atomically in
+`pdfstore/jobs/settings.json` (under `NER_STORAGE_PATH` if set) and survives restart.
+It applies to jobs that finish after the setting is saved. Existing PDFs keep their
+recorded deadlines; this avoids silently deleting earlier results when changing a
+setting. `expires_at: null` means no deadline. Finite expired workspaces and their
+history are removed automatically. On upgrade, existing unexpired jobs keep their
+previous deadlines; already deleted PDFs cannot be recovered. Metadata
 survives a server restart; interrupted jobs report `SERVER_INTERRUPTED` and can be
 retried. Unaccepted partial uploads are removed on restart. The queue accepts at
 most 16 active jobs and processes one PDF at a time. Run **one API worker process**
@@ -302,10 +326,11 @@ for this local deployment; the queue is not distributed across multiple API work
 New API errors have the shape
 `{"error":{"code":"EMPTY_FILE","message":"…","retryable":false}}`.
 HTTP 429 means the queue is full; HTTP 503 means the selected backend needs setup.
-Internal paths and credentials are not included in job errors or capabilities.
+Internal paths and credentials are not included in job errors, history or capabilities.
 Progress also includes `block_id`, `completed_chunks`, and `total_chunks` for the
 current block. A `PROTECTED_CONTENT_INVALID` error means a protected URL/code ID
-was changed or dropped; the document is stopped before original text is removed.
+was changed or dropped; by default that source block is retained and the PDF
+includes an error report (see the recoverable-error policy below).
 The existing `/return_translated_file`, `/return_origin_file`, and
 `/return_translated_file_jaen` endpoints remain compatible with earlier clients.
 Their temporary files are still removed after the response; they do not create
@@ -314,6 +339,15 @@ retained jobs.
 `NER_CONFIG_PATH` optionally selects a configuration file and `NER_STORAGE_PATH`
 selects the upload directory. Defaults are `config.yml` and `pdfstore/`.
 The OpenAPI reference is available at `/docs`.
+History and retention settings are shared by clients of this server; the existing
+single-server deployment does not separate records by user account.
+
+The UI/history change is covered by the full 244-test suite and real Bergamot
+CLI/API/Chromium acceptance, including history search/filter/download/reopening,
+access without browser storage, retention changes through the UI, and downloads
+after a full server restart. Desktop/mobile screenshots and PDFs are generated
+under the ignored `pdf/history-ui/` directory; acceptance results are recorded in
+`benchmarks/history_ui_results.json`.
 
 ### Verification
 
