@@ -135,3 +135,6 @@ pdfstore/
 txt/
 test_page_eng.txt
 models/
+auth.json
+sessions.sqlite3*
+ner-cookies.txt

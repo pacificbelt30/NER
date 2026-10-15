@@ -12,6 +12,7 @@ import pytest
 
 import api_server
 from ner.errors import TranslationCancelled, TranslationError
+from ner.auth import AuthStore
 
 
 def pdf_bytes():
@@ -34,9 +35,11 @@ async def processor(workspace, config, output):
 @pytest.fixture
 def api(monkeypatch, tmp_path):
     monkeypatch.setattr(api_server, 'base', str(tmp_path / 'uploads'))
+    AuthStore.provision(tmp_path / 'uploads', 'admin', 'test-only-password')
     monkeypatch.setattr(api_server, 'CONFIG_PATH', str(tmp_path / 'config.yml'))
     monkeypatch.setattr(api_server, 'selected_config', lambda backend=None: {'PRIORITY': backend or 'INDEX'})
     with TestClient(api_server.app) as client:
+        assert client.post('/api/auth/login', data={'username': 'admin', 'password': 'test-only-password'}).status_code == 200
         api_server.app.state.jobs.processor = processor
         yield client
 
@@ -68,7 +71,7 @@ def test_ui_assets_and_api_schema_are_served(api):
     assert '/api/jobs/{job_id}/retry' in schema['paths']
     assert 'JobView' in schema['components']['schemas']
     assert 'get' in schema['paths']['/api/jobs']
-    for name in ('api', 'history', 'job-view', 'preview', 'settings'):
+    for name in ('api', 'history', 'job-view', 'preview', 'settings', 'auth', 'login'):
         module = api.get(f'/assets/{name}.js')
         assert module.status_code == 200
         assert 'javascript' in module.headers['content-type']

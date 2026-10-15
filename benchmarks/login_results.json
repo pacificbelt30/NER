@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-15",
+  "mode": "Single server account with login required for UI and APIs",
+  "libraries": {
+    "fastapi-login": "1.10.3",
+    "pwdlib": "0.3.1",
+    "argon2-cffi": "25.1.0",
+    "PyJWT": "2.15.1"
+  },
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 267
+  },
+  "native_acceptance": {
+    "cli": {
+      "info_without_config": true,
+      "native_translation": true,
+      "alternating_comparison": true,
+      "missing_file_nonzero": true,
+      "source_unchanged": true,
+      "partial_failure_still_outputs_pdf": true
+    },
+    "auth": {
+      "unauthenticated_api_and_legacy_blocked": true,
+      "cookie_login": true,
+      "browser_login_error_and_success": true,
+      "login_preserves_history_destination": true,
+      "browser_logout_revokes_token": true,
+      "session_survives_server_restart": true
+    },
+    "http": {
+      "native_job_and_downloads": true,
+      "duplicate_receipt": true,
+      "page_preview": true,
+      "invalid_pdf_job_failed": true,
+      "running_cancel": true,
+      "retry": true,
+      "partial_failure_download_and_appendix": true,
+      "history_settings_and_download_survive_restart": true
+    },
+    "browser": {
+      "actual_upload_and_translation": true,
+      "png_preview": true,
+      "decoded_previews_have_content": true,
+      "reload_recovery": true,
+      "mobile_no_overflow": true,
+      "javascript_errors": [],
+      "partial_failure_download_and_reload": true,
+      "server_history_without_browser_storage": true,
+      "history_search_filter_download_reopen": true,
+      "retention_settings_saved_from_ui": true
+    }
+  },
+  "artifacts": "pdf/login-ui/",
+  "setup": "python -m ner.auth setup",
+  "session_hours": 12,
+  "history_retention": "Permanent by default; independent of login session expiry."
+}

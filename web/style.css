@@ -1060,3 +1060,77 @@ footer a {
     opacity: .45;
   }
 }
+
+.account-menu {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.account-menu .muted {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.login-container {
+  max-width: 460px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 20px;
+}
+.login-container > .brand {
+  margin: 0 auto 26px;
+}
+.login-card {
+  width: 100%;
+  padding: 30px;
+}
+.login-card h1 {
+  font-size: 26px;
+}
+.login-card input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  margin-bottom: 20px;
+  background: white;
+}
+.login-card .primary-button {
+  width: 100%;
+  margin-top: 4px;
+}
+.login-card > .muted {
+  margin-bottom: 24px;
+}
+#login-status:empty {
+  display: none;
+}
+@media (max-width: 820px) {
+  .account-menu .muted {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  .site-header {
+    flex-wrap: wrap;
+  }
+  .main-nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: space-between;
+    margin: 0;
+  }
+  .main-nav a {
+    flex: 1;
+    text-align: center;
+  }
+  .account-menu .text-button {
+    font-size: 11px;
+  }
+}

@@ -15,6 +15,7 @@ from ner.http_translators import GoogleTranslator, TextraTranslator
 from ner.local_translators import IndexTranslator, BergamotTranslator
 from ner.translation import TranslationService
 from ner.yml_load import config_load
+from ner.auth import AuthStore
 
 
 def pdf_bytes(text='This research paper describes a practical method for translating English documents into Japanese.'):
@@ -337,7 +338,12 @@ def test_text_translation_keeps_unterminated_last_block(tmp_path, monkeypatch, s
 @pytest.fixture
 def api(monkeypatch, tmp_path):
     monkeypatch.setattr(api_server, 'base', str(tmp_path / 'uploads'))
+    AuthStore.provision(tmp_path / 'auth', 'admin', 'test-only-password')
+    # Keep authentication data outside upload-cleanup assertions in these legacy tests.
+    auth = AuthStore(tmp_path / 'auth')
     with TestClient(api_server.app) as client:
+        api_server.app.state.auth = auth
+        assert client.post('/api/auth/login', data={'username': 'admin', 'password': 'test-only-password'}).status_code == 200
         yield client
 
 
@@ -387,7 +393,7 @@ def test_api_same_filename_requests_are_isolated_and_nonblocking(api, tmp_path, 
     import httpx
     async def requests():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=api_server.app),
-                                    base_url='http://test') as client:
+                                    base_url='http://test', headers={'Authorization': 'Bearer ' + api.cookies.get('ner_session')}) as client:
             return await asyncio.gather(*[
                 client.post('/return_origin_file', files={'file': ('paper.pdf', pdf_bytes())})
                 for _ in range(2)

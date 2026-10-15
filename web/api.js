@@ -39,6 +39,8 @@ export async function request(url, options = {}) {
     );
     error.code = body.error?.code;
     error.status = response.status;
+    if (error.status === 401 && error.code === "LOGIN_REQUIRED")
+      window.dispatchEvent(new Event("ner:login-required"));
     throw error;
   }
   return body;

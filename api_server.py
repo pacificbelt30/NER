@@ -10,14 +10,16 @@ import multiprocessing
 import os
 from pathlib import Path, PureWindowsPath
 import shutil
+import sqlite3
 import tempfile
 import time
 from typing import Annotated, Literal
+from urllib.parse import quote
 
 import aiofiles
 from fastapi import FastAPI, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -30,6 +32,7 @@ from ner.errors import ConfigurationError, PDFError, TranslationCancelled, Trans
 from ner.io_utils import atomic_output
 from ner.jobs import JobExpired, JobManager, QueueFull
 from ner.pdf_warnings import PDFWarning
+from ner.auth import AuthStore, COOKIE_NAME, SESSION_SECONDS
 
 
 logger = logging.getLogger(__name__)
@@ -47,6 +50,7 @@ def new_pool():
 
 @asynccontextmanager
 async def lifespan(app):
+    app.state.auth = AuthStore(Path(base).resolve())
     app.state.pdf_pool = new_pool()
     app.state.jobs = JobManager(Path(base).resolve() / 'jobs', run_translation_job)
     app.state.jobs.start()
@@ -70,6 +74,90 @@ app.add_middleware(
     allow_methods=['GET', 'POST', 'OPTIONS'], allow_headers=['*'],
     expose_headers=['Location', 'Retry-After', 'Content-Disposition'],
 )
+
+
+def auth_error(status, code, message, **headers):
+    return JSONResponse({'error': {'code': code, 'message': message, 'retryable': False}},
+                        status_code=status, headers={'Cache-Control': 'no-store', **headers})
+
+
+@app.middleware('http')
+async def require_login(request: Request, call_next):
+    path = request.url.path
+    if path == '/login' or path.startswith('/assets/'):
+        return await call_next(request)
+    # Cookie-authenticated mutations must originate from this server. API clients
+    # without an Origin header can continue to use a cookie jar or bearer token.
+    if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+        origin = request.headers.get('origin')
+        if ((origin is not None and origin != str(request.base_url).rstrip('/'))
+                or request.headers.get('sec-fetch-site') == 'cross-site'):
+            return auth_error(403, 'ORIGIN_REJECTED', 'この操作はNERの画面から実行してください。')
+    auth = request.app.state.auth
+    request.state.user = None
+    if auth.configured:
+        try:
+            request.state.user = await auth.manager(request)
+        except HTTPException:
+            pass
+        except sqlite3.Error:
+            return auth_error(503, 'AUTH_UNAVAILABLE', 'ログイン情報を確認できません。時間を置いて再試行してください。')
+    if path in ('/api/auth/login', '/api/auth/session'):
+        return await call_next(request)
+    if request.state.user is None:
+        if path.startswith(('/api/', '/return_')) or path == '/openapi.json':
+            return auth_error(401 if auth.configured else 503,
+                'LOGIN_REQUIRED' if auth.configured else 'AUTH_NOT_CONFIGURED',
+                'ログインしてください。' if auth.configured else 'サーバーのログインアカウントを設定してください。')
+        destination = quote(path + ('?' + request.url.query if request.url.query else ''), safe='')
+        return RedirectResponse('/login?next=' + destination, status_code=303,
+                                headers={'Cache-Control': 'no-store'})
+    return await call_next(request)
+
+
+@app.get('/login', include_in_schema=False)
+async def login_page():
+    return FileResponse(WEB_ROOT / 'login.html', headers={'Cache-Control': 'no-store'})
+
+
+@app.get('/api/auth/session')
+async def auth_session(request: Request):
+    user = request.state.user
+    return JSONResponse({'configured': app.state.auth.configured, 'authenticated': user is not None,
+                         'username': user['username'] if user else None}, headers={'Cache-Control': 'no-store'})
+
+
+@app.post('/api/auth/login')
+async def login(request: Request, username: Annotated[str, Form(min_length=1, max_length=128)],
+                password: Annotated[str, Form(min_length=1, max_length=1024)]):
+    auth = app.state.auth
+    if not auth.configured:
+        return auth_error(503, 'AUTH_NOT_CONFIGURED', 'サーバーのログインアカウントを設定してください。')
+    if not auth.allow_attempt(request.client.host if request.client else ''):
+        return auth_error(429, 'LOGIN_RATE_LIMITED', 'ログイン試行が多すぎます。1分ほど待って再試行してください。', **{'Retry-After': '60'})
+    try:
+        token = await run_in_threadpool(auth.login, username, password, request.state.user)
+    except sqlite3.Error:
+        return auth_error(503, 'AUTH_UNAVAILABLE', 'ログイン情報を保存できません。時間を置いて再試行してください。')
+    if token is None:
+        return auth_error(401, 'INVALID_CREDENTIALS', 'ユーザー名またはパスワードが違います。')
+    response = JSONResponse({'access_token': token, 'token_type': 'bearer', 'username': auth.username},
+                            headers={'Cache-Control': 'no-store'})
+    response.set_cookie(COOKIE_NAME, token, max_age=SESSION_SECONDS, httponly=True, samesite='strict',
+                        secure=os.environ.get('NER_COOKIE_SECURE') == '1' or request.url.scheme == 'https')
+    return response
+
+
+@app.post('/api/auth/logout')
+async def logout(request: Request):
+    try:
+        await run_in_threadpool(app.state.auth.logout, request.state.user['session_id'])
+    except sqlite3.Error:
+        return auth_error(503, 'AUTH_UNAVAILABLE', 'ログアウトを完了できませんでした。もう一度お試しください。')
+    response = JSONResponse({'authenticated': False}, headers={'Cache-Control': 'no-store'})
+    response.delete_cookie(COOKIE_NAME, httponly=True, samesite='strict',
+                           secure=os.environ.get('NER_COOKIE_SECURE') == '1' or request.url.scheme == 'https')
+    return response
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -102,7 +190,7 @@ def api_error(status, code, message, retryable=False):
 
 @app.get('/', include_in_schema=False)
 async def web_ui():
-    return FileResponse(WEB_ROOT / 'index.html', headers={'Cache-Control': 'no-cache'})
+    return FileResponse(WEB_ROOT / 'index.html', headers={'Cache-Control': 'no-store'})
 
 
 def selected_config(backend=None):

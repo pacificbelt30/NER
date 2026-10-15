@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import secrets
 import socket
 import subprocess
 import sys
@@ -22,6 +23,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts.audit_pdf_layout import fixture
+from ner.auth import AuthStore
 
 
 def wait_for_job(session, base, job_id, statuses=('succeeded', 'failed', 'cancelled'), timeout=90):
@@ -102,6 +104,8 @@ def main():
         base = f'http://127.0.0.1:{port}'
         env = dict(os.environ, NER_CONFIG_PATH=str(workspace / 'config.yml'),
                    NER_STORAGE_PATH=str(workspace / 'storage'))
+        auth_username, auth_password = 'admin', secrets.token_urlsafe(20)
+        AuthStore.provision(workspace / 'storage', auth_username, auth_password)
         with (workspace / 'server.log').open('w+') as log:
             server_command = [sys.executable, '-m', 'uvicorn', 'api_server:app',
                               '--host', '127.0.0.1', '--port', str(port)]
@@ -112,13 +116,20 @@ def main():
                 deadline = time.monotonic() + 30
                 while True:
                     try:
-                        response = session.get(base + '/api/capabilities', timeout=1)
+                        response = session.get(base + '/api/auth/session', timeout=1)
                         if response.ok:
                             break
                     except requests.RequestException:
                         pass
                     assert server.poll() is None and time.monotonic() < deadline
                     time.sleep(0.05)
+                assert not response.json()['authenticated']
+                assert session.get(base + '/api/jobs', timeout=10).status_code == 401
+                assert session.post(base + '/return_origin_file', timeout=10).status_code == 401
+                authenticated = session.post(base + '/api/auth/login',
+                    data={'username': auth_username, 'password': auth_password}, timeout=10)
+                assert authenticated.ok
+                report['auth'] = {'unauthenticated_api_and_legacy_blocked': True, 'cookie_login': True}
                 payload = source.read_bytes()
                 def submit(content=payload, filename='sample.pdf', key=None):
                     response = session.post(base + '/api/jobs', files={'file': (filename, content, 'application/pdf')},
@@ -190,6 +201,21 @@ def main():
                         errors = []
                         page.on('pageerror', lambda error: errors.append(str(error)))
                         page.goto(base)
+                        page.wait_for_url('**/login?next=*')
+                        page.wait_for_function('!document.querySelector("#login-submit").disabled')
+                        page.screenshot(path=str(output / 'login-desktop.png'), full_page=True)
+                        page.set_viewport_size({'width': 390, 'height': 844})
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        page.screenshot(path=str(output / 'login-mobile.png'), full_page=True)
+                        page.locator('#login-username').fill(auth_username)
+                        page.locator('#login-password').fill('wrong-password')
+                        page.locator('#login-submit').click()
+                        page.locator('#login-error').wait_for(state='visible')
+                        assert 'ユーザー名またはパスワード' in page.locator('#login-error').inner_text()
+                        page.locator('#login-password').fill(auth_password)
+                        page.locator('#login-submit').click()
+                        page.wait_for_url(base + '/')
+                        page.set_viewport_size({'width': 1280, 'height': 960})
                         page.wait_for_function('!document.querySelector("#backend").disabled')
                         page.locator('#pdf-file').set_input_files(str(source))
                         page.locator('#start-button').click()
@@ -295,6 +321,10 @@ def main():
                         fresh = context.new_page()
                         fresh.on('pageerror', lambda error: errors.append(str(error)))
                         fresh.goto(base + '/#history')
+                        fresh.wait_for_function('!document.querySelector("#login-submit").disabled')
+                        fresh.locator('#login-username').fill(auth_username)
+                        fresh.locator('#login-password').fill(auth_password)
+                        fresh.locator('#login-submit').click()
                         fresh.locator(f'.history-row[data-job="{receipt["id"]}"]').wait_for()
                         fresh.screenshot(path=str(output / 'history-desktop.png'), full_page=True)
                         fresh.set_viewport_size({'width': 390, 'height': 844})
@@ -303,11 +333,21 @@ def main():
                         fresh.locator('#nav-translate').click()
                         fresh.locator('#upload-panel').wait_for(state='visible')
                         fresh.screenshot(path=str(output / 'upload-mobile.png'), full_page=True)
+                        token = next(cookie['value'] for cookie in context.cookies() if cookie['name'] == 'ner_session')
+                        fresh.locator('#logout-button').click()
+                        fresh.wait_for_url(base + '/login')
+                        assert fresh.request.get(base + '/api/jobs').status == 401
+                        # A copied token cannot be used after explicit logout.
+                        assert fresh.request.get(base + '/api/jobs',
+                            headers={'Authorization': f'Bearer {token}'}).status == 401
                         context.close()
                         assert not errors, errors
                         report['browser']['server_history_without_browser_storage'] = True
                         report['browser']['history_search_filter_download_reopen'] = True
                         report['browser']['retention_settings_saved_from_ui'] = True
+                        report['auth']['browser_login_error_and_success'] = True
+                        report['auth']['login_preserves_history_destination'] = True
+                        report['auth']['browser_logout_revokes_token'] = True
                     finally:
                         browser.close()
                 server.terminate()
@@ -330,6 +370,7 @@ def main():
                 with fitz.open(stream=saved.content, filetype='pdf') as document:
                     assert len(document) == 2
                 report['http']['history_settings_and_download_survive_restart'] = True
+                report['auth']['session_survives_server_restart'] = True
             finally:
                 session.close()
                 server.terminate()

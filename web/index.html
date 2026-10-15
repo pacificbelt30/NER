@@ -36,15 +36,13 @@
           設定
         </a>
       </nav>
-      <span class="language-label">
-        English
-        <span aria-hidden="true">
-          →
-        </span>
-        日本語
-      </span>
+      <div class="account-menu">
+        <span id="account-name" class="muted"></span>
+        <button id="logout-button" class="text-button" type="button">ログアウト</button>
+      </div>
     </header>
     <main id="main">
+      <p id="account-message" class="form-error" role="alert" hidden></p>
       <div id="translate-view">
         <section class="workspace-heading">
           <div>

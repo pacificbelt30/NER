@@ -251,7 +251,37 @@ failures, and 500 for server setup or storage failures.
 
 ### Web UI and job API
 
-Run `python api_server.py`, then open `http://127.0.0.1:8000/`.
+Create the login account once, start the server, then open `http://127.0.0.1:8000/`:
+
+```sh
+python -m ner.auth setup
+python api_server.py
+```
+
+The setup command prompts for a username and password, including confirmation.
+If using a custom storage directory, give both commands the same `NER_STORAGE_PATH`
+or pass `--storage /path/to/storage` to the setup command. There is no default
+password. Without an account, only the login page and its setup instructions are
+available; private API routes return `AUTH_NOT_CONFIGURED`.
+
+Login uses the existing [FastAPI-Login](https://github.com/maxrdu/fastapi_login)
+library. Passwords are hashed with [pwdlib / Argon2](https://frankie567.github.io/pwdlib/).
+This is a single account for the server: no public registration, email service or
+external identity provider is required. Account data is stored in
+`NER_STORAGE_PATH/auth.json` and active sessions in `sessions.sqlite3`, with private
+file permissions. No plaintext password is saved. Sessions last 12 hours and survive
+server restarts. Logout revokes the current session on the server as well as clearing
+its HttpOnly, SameSite=Strict cookie; copied tokens from that session are rejected.
+To change or recover the account, run the setup command again and restart the server.
+The new signing secret invalidates previous tokens. With HTTPS, cookies are marked
+Secure; set `NER_COOKIE_SECURE=1` when HTTPS terminates at a reverse proxy.
+
+The Web UI, API documentation, job/history/settings APIs, PDF downloads, previews
+and legacy upload routes require login. Clients receive HTTP 401 with
+`LOGIN_REQUIRED` when the session expires. Mutating browser requests must be from
+the server's own origin. Login attempts are limited to five per minute per client
+address. The standalone PDF CLI continues to work without server authentication.
+
 The Japanese UI is served with the API; no frontend build or external CDN is
 needed. It supports file selection and drag-and-drop, original-file preview,
 backend selection, upload and translation progress, cancellation, retry, and
@@ -283,6 +313,9 @@ New clients should use the job API:
 
 | Method | Endpoint | Behavior |
 | --- | --- | --- |
+| GET | `/api/auth/session` | Public login state and whether the account is configured |
+| POST | `/api/auth/login` | Form `username`, `password`; sets a session cookie and returns an API bearer token |
+| POST | `/api/auth/logout` | Revoke the current session and delete its cookie |
 | GET | `/api/capabilities` | Languages, upload limit, configured engines, retention period |
 | GET | `/api/jobs?q=&status=&limit=20&offset=0` | Newest-first history; case-insensitive filename search; exact status filter; returns `items`, `total`, `limit`, `offset` |
 | POST | `/api/jobs` | Multipart `file`, optional `backend`, and `output=translated\|comparison`; returns HTTP 202 |
@@ -298,9 +331,16 @@ New clients should use the job API:
 Example:
 
 ```sh
+# Log in first; enter the account password at the terminal prompt.
+python -c 'import getpass, urllib.parse; print(urllib.parse.urlencode({"username": "admin", "password": getpass.getpass()}))' | \
+  curl --data-binary @- -c ner-cookies.txt http://127.0.0.1:8000/api/auth/login
 curl -F file=@paper.pdf -F backend=BERGAMOT -F output=comparison \
-  -H 'Idempotency-Key: unique-upload-receipt' http://127.0.0.1:8000/api/jobs
+  -b ner-cookies.txt -H 'Idempotency-Key: unique-upload-receipt' http://127.0.0.1:8000/api/jobs
 ```
+
+Programmatic clients can reuse the cookie jar or send the returned token as
+`Authorization: Bearer …`. Keep the token and cookie jar private. Existing API
+routes retain their request/response behavior after authentication.
 
 Use a fresh optional `Idempotency-Key` for each new upload. Re-sending a receipt
 returns the accepted job rather than creating duplicate work; changing its
@@ -339,8 +379,15 @@ retained jobs.
 `NER_CONFIG_PATH` optionally selects a configuration file and `NER_STORAGE_PATH`
 selects the upload directory. Defaults are `config.yml` and `pdfstore/`.
 The OpenAPI reference is available at `/docs`.
-History and retention settings are shared by clients of this server; the existing
-single-server deployment does not separate records by user account.
+History and retention settings are shared by authenticated clients of the server's
+single account.
+
+The login addition passes the full **267-test** suite and real Bergamot/API/Chromium
+acceptance. Checks include login errors/success, unauthenticated private/legacy
+access, cookie and bearer clients, token expiry/tampering, logout revocation,
+restart persistence, cross-origin mutations, login throttling, account reset and
+interactive setup. Login desktop/mobile screenshots are generated under the
+ignored `pdf/login-ui/` directory. `benchmarks/login_results.json` records the results.
 
 The UI/history change is covered by the full 244-test suite and real Bergamot
 CLI/API/Chromium acceptance, including history search/filter/download/reopening,

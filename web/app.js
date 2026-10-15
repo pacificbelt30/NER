@@ -3,6 +3,7 @@ import { progress, renderJob as renderJobView } from "./job-view.js";
 import { createPreview } from "./preview.js";
 import { createHistory } from "./history.js";
 import { createSettings } from "./settings.js";
+import { initializeAuth, loginRequired } from "./auth.js";
 const STORAGE = "ner:last-job:v1";
 const state = {
   file: null,
@@ -279,6 +280,7 @@ function upload() {
       }
       if (xhr.status >= 200 && xhr.status < 300) resolve(body);
       else {
+        if (xhr.status === 401) loginRequired();
         const error = new Error(
           body.error?.message || "PDFを受け付けられませんでした。",
         );
@@ -474,6 +476,13 @@ async function restore(saved) {
 }
 
 (async function initialize() {
+  try {
+    if (!await initializeAuth()) return;
+  } catch (error) {
+    $("account-message").textContent = error.message;
+    $("account-message").hidden = false;
+    return;
+  }
   showView();
   if (location.hash !== "#settings") void settings.load();
   await loadCapabilities();
