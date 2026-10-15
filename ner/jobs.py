@@ -47,7 +47,7 @@ def public_error(exc):
 
 
 class JobManager:
-    def __init__(self, root, processor, *, retention=3600, capacity=16):
+    def __init__(self, root, processor, *, retention=None, capacity=16):
         self.root = Path(root)
         self.processor = processor
         self.retention = retention
@@ -59,6 +59,15 @@ class JobManager:
         self.closing = False
 
     def start(self):
+        settings = self.root / 'settings.json'
+        if settings.exists():
+            try:
+                days = json.loads(settings.read_text(encoding='utf-8'))['retention_days']
+                if days is not None and (type(days) is not int or not 1 <= days <= 3650):
+                    raise ValueError('Invalid retention period.')
+                self.retention = None if days is None else days * 86400
+            except (OSError, ValueError, KeyError, TypeError):
+                logging.getLogger(__name__).warning('Saved retention settings could not be loaded.')
         # Unaccepted uploads cannot be resumed after a process restart.
         for workspace in self.root.glob('*'):
             if (workspace.is_dir() and not workspace.is_symlink() and len(workspace.name) == 32
@@ -73,7 +82,7 @@ class JobManager:
                 if job['status'] in ACTIVE:
                     job.update(status='failed', error={
                         'code': 'SERVER_INTERRUPTED', 'message': 'サーバーの再起動で処理が中断されました。同じPDFで再試行できます。', 'retryable': True,
-                    }, updated_at=time.time(), expires_at=time.time() + self.retention)
+                    }, updated_at=time.time(), expires_at=self._expiry())
                     self._save(job)
                 self.jobs[job['id']] = job
             except (OSError, ValueError, KeyError, TypeError):
@@ -84,10 +93,24 @@ class JobManager:
         with atomic_output(self.root / job['id'] / 'job.json') as path:
             path.write_text(json.dumps(job, ensure_ascii=False), encoding='utf-8')
 
+    def _expiry(self):
+        return None if self.retention is None else time.time() + self.retention
+
+    def settings(self):
+        return {'retention_days': None if self.retention is None else self.retention // 86400}
+
+    def set_retention(self, days):
+        self.root.mkdir(parents=True, exist_ok=True)
+        with atomic_output(self.root / 'settings.json') as path:
+            path.write_text(json.dumps({'retention_days': days}), encoding='utf-8')
+        self.retention = None if days is None else days * 86400
+        return self.settings()
+
     def expire(self):
         now = time.time()
         for job_id, job in list(self.jobs.items()):
-            if job['status'] in TERMINAL and job.get('expires_at', now + 1) <= now:
+            expires = job.get('expires_at')
+            if job['status'] in TERMINAL and expires is not None and expires <= now:
                 self.expired.add(job_id)
                 shutil.rmtree(self.root / job_id, ignore_errors=True)
                 del self.jobs[job_id]
@@ -142,7 +165,7 @@ class JobManager:
                 logging.getLogger(__name__).exception('Translation job %s failed.', job['id'])
                 job.update(status='failed', error=public_error(exc))
         finally:
-            job.update(updated_at=time.time(), expires_at=time.time() + self.retention)
+            job.update(updated_at=time.time(), expires_at=self._expiry())
             self._save(job)
             self.tasks.pop(job['id'], None)
 
@@ -159,7 +182,20 @@ class JobManager:
         return next((job for job in self.jobs.values() if job.get('submission_key') == key), None)
 
     def describe(self, job_id):
-        job = self.get(job_id)
+        return self._describe(self.get(job_id))
+
+    def list_jobs(self, *, query='', status=None, limit=20, offset=0):
+        self.expire()
+        query = query.casefold()
+        jobs = sorted((job for job in self.jobs.values()
+                       if query in job['filename'].casefold()
+                       and (status is None or job['status'] == status)),
+                      key=lambda job: (job['created_at'], job['id']), reverse=True)
+        return {'items': [self._describe(job) for job in jobs[offset:offset + limit]],
+                'total': len(jobs), 'limit': limit, 'offset': offset}
+
+    def _describe(self, job):
+        job_id = job['id']
         progress = {'stage': job['status'], 'completed_blocks': 0, 'total_blocks': 0,
                     'page': 0, 'pages': 0}
         if job['status'] != 'queued':
@@ -189,7 +225,7 @@ class JobManager:
     def cancel(self, job_id):
         job = self.get(job_id)
         if job['status'] == 'queued':
-            job.update(status='cancelled', updated_at=time.time(), expires_at=time.time() + self.retention)
+            job.update(status='cancelled', updated_at=time.time(), expires_at=self._expiry())
             self._save(job)
             if job_id in self.tasks:
                 self.tasks[job_id].cancel()

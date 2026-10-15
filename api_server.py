@@ -25,7 +25,7 @@ from starlette.concurrency import run_in_threadpool
 import uvicorn
 
 from ner import CombinePDF, PaperExtract, TextraConnection, TranslationService, config_load
-from ner.api_models import Backend, JobView, Output
+from ner.api_models import Backend, JobListView, JobStatus, JobView, Output, ServerSettings
 from ner.errors import ConfigurationError, PDFError, TranslationCancelled, TranslationError
 from ner.io_utils import atomic_output
 from ner.jobs import JobExpired, JobManager, QueueFull
@@ -38,7 +38,6 @@ MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 CHUNK_SIZE = 1024 * 1024
 CONFIG_PATH = os.environ.get('NER_CONFIG_PATH', 'config.yml')
 WEB_ROOT = Path(__file__).resolve().parent / 'web'
-RESULT_RETENTION = 3600
 
 
 def new_pool():
@@ -49,8 +48,7 @@ def new_pool():
 @asynccontextmanager
 async def lifespan(app):
     app.state.pdf_pool = new_pool()
-    app.state.jobs = JobManager(Path(base).resolve() / 'jobs', run_translation_job,
-                                retention=RESULT_RETENTION)
+    app.state.jobs = JobManager(Path(base).resolve() / 'jobs', run_translation_job)
     app.state.jobs.start()
     async def cleanup():
         while True:
@@ -139,7 +137,7 @@ async def capabilities():
         backends.append({'id': name, 'label': label, 'local': name in ('INDEX', 'BERGAMOT'),
                          'configured': configured})
     return {'source_language': 'en', 'target_language': 'ja', 'max_upload_bytes': MAX_UPLOAD_BYTES,
-            'result_retention_seconds': RESULT_RETENTION, 'backends': backends,
+            'result_retention_seconds': app.state.jobs.retention, 'backends': backends,
             'default_backend': config.get('PRIORITY')}
 
 
@@ -244,6 +242,26 @@ async def save_job_upload(file, workspace):
     if not size:
         raise api_error(400, 'EMPTY_FILE', 'PDFが空です。別のファイルを選んでください。')
     return filename
+
+
+@app.get('/api/settings', response_model=ServerSettings)
+async def server_settings():
+    return JSONResponse(app.state.jobs.settings(), headers={'Cache-Control': 'no-store'})
+
+
+@app.put('/api/settings', response_model=ServerSettings)
+async def update_server_settings(settings: ServerSettings):
+    try:
+        return app.state.jobs.set_retention(settings.retention_days)
+    except OSError as exc:
+        raise api_error(500, 'SETTINGS_SAVE_FAILED', '設定を保存できませんでした。もう一度お試しください。', True) from exc
+
+
+@app.get('/api/jobs', response_model=JobListView)
+async def list_jobs(q: str = Query('', max_length=200), status: JobStatus | None = None,
+                    limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return JSONResponse(app.state.jobs.list_jobs(query=q, status=status, limit=limit, offset=offset),
+                        headers={'Cache-Control': 'no-store'})
 
 
 @app.post('/api/jobs', status_code=202, response_model=JobView)

@@ -67,6 +67,117 @@ def test_ui_assets_and_api_schema_are_served(api):
     schema = api.get('/openapi.json').json()
     assert '/api/jobs/{job_id}/retry' in schema['paths']
     assert 'JobView' in schema['components']['schemas']
+    assert 'get' in schema['paths']['/api/jobs']
+
+
+def test_history_search_filters_pagination_and_downloads(api):
+    assert api.get('/api/jobs').json() == {'items': [], 'total': 0, 'limit': 20, 'offset': 0}
+    ids = []
+    for name in ('Analysis.PDF', 'table.pdf', 'analysis-notes.pdf'):
+        job = submit(api, filename=name).json()
+        finished(api, job['id'])
+        ids.append(job['id'])
+    response = api.get('/api/jobs?limit=2')
+    assert response.headers['cache-control'] == 'no-store'
+    first = response.json()
+    assert first['total'] == 3
+    assert [job['id'] for job in first['items']] == ids[::-1][:2]
+    second = api.get('/api/jobs?limit=2&offset=2').json()
+    assert [job['id'] for job in second['items']] == ids[:1]
+    matched = api.get('/api/jobs?q=ANALYSIS&status=succeeded').json()
+    assert [job['id'] for job in matched['items']] == [ids[2], ids[0]]
+    assert api.get('/api/jobs?status=failed').json()['total'] == 0
+    assert api.get('/api/jobs?q=absent').json()['total'] == 0
+    assert api.get(first['items'][0]['downloads']['translated']).status_code == 200
+    assert all(key not in str(first) for key in ('submission_key', 'config.yml', 'uploads/'))
+
+
+@pytest.mark.parametrize('query', ['limit=0', 'limit=101', 'offset=-1', 'status=bad', 'q=' + 'x' * 201])
+def test_history_query_validation(api, query):
+    response = api.get('/api/jobs?' + query)
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'INVALID_REQUEST'
+
+
+def test_history_survives_restart_and_removes_expired_results(api):
+    first = submit(api, filename='keep.pdf').json()
+    second = submit(api, filename='expired.pdf').json()
+    finished(api, first['id'])
+    finished(api, second['id'])
+    manager = api_server.app.state.jobs
+    manager.jobs[second['id']]['expires_at'] = time.time() - 1
+    manager._save(manager.jobs[second['id']])
+    restarted = api_server.JobManager(manager.root, processor)
+    restarted.start()
+    api_server.app.state.jobs = restarted
+    history = api.get('/api/jobs').json()
+    assert [job['id'] for job in history['items']] == [first['id']]
+    assert history['items'][0]['expires_at'] is None
+    assert api.get(history['items'][0]['downloads']['translated']).status_code == 200
+    assert not (restarted.root / second['id']).exists()
+
+
+def test_history_includes_failure_and_retry(api):
+    async def fail(*args):
+        raise TranslationError('secret details')
+    manager = api_server.app.state.jobs
+    manager.processor = fail
+    first = submit(api).json()
+    finished(api, first['id'])
+    history = api.get('/api/jobs?status=failed').json()
+    assert history['items'][0]['error']['retryable']
+    assert 'secret details' not in str(history)
+    manager.processor = processor
+    retried = api.post(f"/api/jobs/{first['id']}/retry").json()
+    finished(api, retried['id'])
+    assert api.get('/api/jobs').json()['total'] == 2
+    assert api.get('/api/jobs?status=succeeded').json()['total'] == 1
+
+
+def test_retention_settings_apply_to_new_completions_and_persist(api):
+    assert api.get('/api/settings').json() == {'retention_days': None}
+    permanent = finished(api, submit(api).json()['id'])
+    assert permanent['expires_at'] is None
+    response = api.put('/api/settings', json={'retention_days': 7})
+    assert response.status_code == 200 and response.json() == {'retention_days': 7}
+    assert api.get('/api/capabilities').json()['result_retention_seconds'] == 7 * 86400
+    finite = finished(api, submit(api).json()['id'])
+    from datetime import datetime
+    deadline = datetime.fromisoformat(finite['expires_at']).timestamp()
+    assert abs(deadline - time.time() - 7 * 86400) < 5
+    assert api.get(f"/api/jobs/{permanent['id']}").json()['expires_at'] is None
+    root = api_server.app.state.jobs.root
+    restarted = api_server.JobManager(root, processor)
+    restarted.start()
+    api_server.app.state.jobs = restarted
+    assert api.get('/api/settings').json() == {'retention_days': 7}
+    assert api.put('/api/settings', json={'retention_days': None}).status_code == 200
+    assert finished(api, submit(api).json()['id'])['expires_at'] is None
+    assert api.get(f"/api/jobs/{finite['id']}").json()['expires_at'] == finite['expires_at']
+    restarted = api_server.JobManager(root, processor)
+    restarted.start()
+    api_server.app.state.jobs = restarted
+    assert api.get('/api/settings').json() == {'retention_days': None}
+    assert api.get('/api/jobs').json()['total'] == 3
+
+
+@pytest.mark.parametrize('settings', [{}, {'retention_days': 0}, {'retention_days': -1},
+    {'retention_days': 3651}, {'retention_days': True}, {'retention_days': '7'},
+    {'retention_days': 1.5}, {'retention_days': None, 'unexpected': True}])
+def test_invalid_retention_settings_do_not_change_saved_policy(api, settings):
+    assert api.put('/api/settings', json=settings).status_code == 422
+    assert api.get('/api/settings').json() == {'retention_days': None}
+
+
+def test_settings_save_failure_preserves_current_policy(api, monkeypatch):
+    def fail(*args):
+        raise OSError('private server path')
+    monkeypatch.setattr(api_server.app.state.jobs, 'set_retention', fail)
+    response = api.put('/api/settings', json={'retention_days': 7})
+    assert response.status_code == 500
+    assert response.json()['error']['code'] == 'SETTINGS_SAVE_FAILED'
+    assert 'private server path' not in response.text
+    assert api.get('/api/settings').json() == {'retention_days': None}
 
 
 def test_job_acceptance_progress_and_repeatable_downloads(api):
@@ -77,7 +188,7 @@ def test_job_acceptance_progress_and_repeatable_downloads(api):
     result = finished(api, job['id'])
     assert result['status'] == 'succeeded'
     assert result['progress']['completed_blocks'] == 1
-    assert result['expires_at']
+    assert result['expires_at'] is None  # Permanent history is the default.
     for kind in ('original', 'translated', 'comparison'):
         download = api.get(result['downloads'][kind])
         assert download.status_code == 200

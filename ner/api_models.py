@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 Backend = Literal['INDEX', 'BERGAMOT', 'GOOGLE', 'TEXTRA']
 Output = Literal['translated', 'comparison']
+JobStatus = Literal['queued', 'running', 'cancelling', 'succeeded', 'failed', 'cancelled']
 
 
 class ErrorView(BaseModel):
@@ -47,7 +48,7 @@ class JobView(BaseModel):
     filename: str
     backend: Backend
     output: Output
-    status: Literal['queued', 'running', 'cancelling', 'succeeded', 'failed', 'cancelled']
+    status: JobStatus
     created_at: str
     updated_at: str
     expires_at: str | None
@@ -57,3 +58,15 @@ class JobView(BaseModel):
     downloads: dict[str, str] | None
     warnings: list[WarningView] = Field(default_factory=list)
     result_summary: ResultSummaryView | None = None
+
+
+class JobListView(BaseModel):
+    items: list[JobView]
+    total: int
+    limit: int
+    offset: int
+
+
+class ServerSettings(BaseModel):
+    model_config = {'extra': 'forbid'}
+    retention_days: int | None = Field(..., ge=1, le=3650, strict=True)
