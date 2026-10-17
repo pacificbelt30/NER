@@ -333,3 +333,19 @@ def test_pdf_chunk_cancellation_keeps_its_exception_type(tmp_path, recorded):
         with pytest.raises(TranslationCancelled):
             connection.post_page(on_chunk_progress=stop)
         assert connection.page_array is None and connection.block_results is None
+
+
+@pytest.mark.parametrize('url', ['https://example.org/fixed', 'https://example.org/office', 'https://example.org/offline'])
+def test_url_copy_text_does_not_contain_typographic_ligatures(tmp_path, recorded, url):
+    path = tmp_path / 'url.pdf'
+    with fitz.open() as doc:
+        page = doc.new_page()
+        page.insert_text((40, 100), 'Read ' + url + ' for more information.')
+        doc.save(path)
+    with TextraConnection(path, config={'PRIORITY': 'INDEX'}) as connection:
+        connection.get_pdf_info()
+        connection.post_page()
+        output = connection.insert()
+    with fitz.open(output) as doc:
+        assert url in ''.join(doc[0].get_text().split())
+        assert url in [link.get('uri') for link in doc[0].get_links()]

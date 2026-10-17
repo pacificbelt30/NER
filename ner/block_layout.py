@@ -43,6 +43,10 @@ def prepare_rich(source_page, block, result, font_path=None, *, space=None):
         content = html.escape(span.original).replace('\n', '<br>')
         if span.kind == 'code':
             content = '<code>' + content + '</code>'
+        elif span.kind == 'url' and re.search(r'ff|fi|fl', span.original):
+            # MuPDF's proportional fallback shapes "fi" into U+FB01 even with
+            # CSS ligatures disabled, corrupting copied URLs. Monospace avoids it.
+            content = '<span class="ner-url">' + content + '</span>'
         if span.href:
             content = '<a href="' + html.escape(span.href, quote=True) + '">' + content + '</a>'
         parts.append(content)
@@ -62,7 +66,7 @@ def prepare_rich(source_page, block, result, font_path=None, *, space=None):
            # CJK fallback glyph bounds can overhang the CSS line box. Vertical
            # padding keeps that ink inside the same obstacle-checked rectangle.
            f"p {{margin:0; padding:0.25em 0; text-align:{block.get('text_align', 'left')};}} "
-           'code {font-family:monospace; font-size:1em;} a {color:#004c99;}')
+           'code, .ner-url {font-family:monospace; font-size:1em;} a {color:#004c99;}')
     archive = None
     if font_path:
         path = Path(font_path)
