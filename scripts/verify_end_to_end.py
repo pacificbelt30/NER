@@ -225,6 +225,7 @@ def main():
                         page.wait_for_url(browser_base + '/')
                         page.set_viewport_size({'width': 1280, 'height': 960})
                         page.wait_for_function('!document.querySelector("#backend").disabled')
+                        assert page.locator('input[name="output"]').count() == 0
                         page.locator('#pdf-file').set_input_files(str(source))
                         # Preparation errors must be visible and must allow retry,
                         # rather than rejecting start() before its error handler.
@@ -238,6 +239,14 @@ def main():
                         page.locator('#start-button').click()
                         page.locator('#results').wait_for(state='visible', timeout=90000)
                         assert len(submissions) == 1 and submissions[0] and len(submissions[0]) <= 64
+                        for kind, expected_pages in (('translated', 2), ('comparison', 4)):
+                            assert page.locator(f'#download-{kind}').is_visible()
+                            with page.expect_download() as download:
+                                page.locator(f'#download-{kind}').click()
+                            path = output / f'browser-{kind}.pdf'
+                            download.value.save_as(str(path))
+                            with fitz.open(path) as document:
+                                assert len(document) == expected_pages
                         def check_preview():
                             page.wait_for_function('''["original", "translated"].every(kind => {
                               const image = document.querySelector(`#${kind}-frame`);
@@ -364,6 +373,7 @@ def main():
                         report['browser']['history_search_filter_download_reopen'] = True
                         report['browser']['retention_settings_saved_from_ui'] = True
                         report['browser']['nonlocal_plain_http_upload'] = True
+                        report['browser']['both_pdf_downloads_without_output_selection'] = True
                         report['browser']['upload_preparation_error_visible_and_retryable'] = True
                         report['auth']['browser_login_error_and_success'] = True
                         report['auth']['login_preserves_history_destination'] = True

@@ -21,7 +21,7 @@ const history = createHistory(async id => {
   const job = await request(`/api/jobs/${id}`);
   if (state.xhr) throw new Error("アップロードが完了してから履歴を開いてください。");
   newFile();
-  selectJobOptions(job);
+  selectJobBackend(job);
   track(job);
   location.hash = "translate";
   showView();
@@ -72,19 +72,12 @@ function connection(message) {
   if ($("connection-note").textContent !== (message || "")) $("connection-note").textContent = message || "";
   $("connection-note").hidden = !message;
 }
-function selectedOutput() {
-  return document.querySelector('input[name="output"]:checked').value;
-}
-
 function controls(busy) {
   state.busy = busy;
   $("pdf-file").disabled = busy;
   $("dropzone").classList.toggle("locked", busy);
   $("backend").disabled =
     busy || !state.capabilities?.backends.some((b) => b.configured);
-  document.querySelectorAll('input[name="output"]').forEach((input) => {
-    input.disabled = busy;
-  });
   $("start-button").disabled = busy || !state.file || $("backend").disabled;
   $("remove-file").disabled = busy;
   $("new-file-button").disabled = busy;
@@ -100,10 +93,9 @@ function backendNote() {
     : "本文を外部の翻訳サービスへ送信して翻訳します。";
 }
 
-function selectJobOptions(job) {
+function selectJobBackend(job) {
   if (state.capabilities?.backends.find(b => b.id === job.backend)?.configured)
     $("backend").value = job.backend;
-  document.querySelector(`input[name="output"][value="${job.output}"]`).checked = true;
   backendNote();
 }
 
@@ -301,7 +293,7 @@ function upload() {
     const form = new FormData();
     form.append("file", state.file);
     form.append("backend", $("backend").value);
-    form.append("output", selectedOutput());
+    form.append("output", "comparison");
     xhr.send(form);
   });
 }
@@ -428,7 +420,7 @@ $("retry-button").addEventListener("click", async () => {
   controls(true);
   const form = new FormData();
   if ($("backend").value) form.append("backend", $("backend").value);
-  form.append("output", selectedOutput());
+  form.append("output", "comparison");
   try {
     track(
       await request(`/api/jobs/${state.job.id}/retry`, {
@@ -454,7 +446,7 @@ async function restore(saved) {
         saved.id ? `/api/jobs/${saved.id}` : `/api/jobs/by-key/${saved.key}`,
       );
       if (version !== state.version) return;
-      selectJobOptions(job);
+      selectJobBackend(job);
       track(job);
       return;
     } catch (error) {
