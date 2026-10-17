@@ -1,6 +1,6 @@
 """Compare extraction, page copying, and translated layout on synthetic PDFs.
 
-Install requirements-benchmark.txt, then run with --output and --repeat (default 5).
+Install with uv sync --group benchmark, then run with --output and --repeat (default 5).
 Translation is fixture-controlled, so this measures PDF handling, not MT quality.
 Alternate writers use identical extracted blocks / translations: their results
 are implementation experiments, not intrinsic quality scores of the libraries.

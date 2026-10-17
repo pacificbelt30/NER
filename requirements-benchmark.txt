@@ -1,7 +1,0 @@
-# Optional measurement tools; not production runtime dependencies.
-pdfplumber==0.11.10
-pdfminer.six==20260107
-pypdf==6.20.1
-pypdfium2==5.14.0
-reportlab==5.0.1
-numpy==2.4.6

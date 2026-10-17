@@ -1,0 +1,36 @@
+[project]
+name = "ner-pdf-translator"
+version = "0.1.0"
+description = "Translate English PDFs into Japanese while preserving their layout"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "pymupdf>=1.24.3",
+    "requests",
+    "requests-oauthlib",
+    "pyyaml",
+    "nltk",
+    "regex",
+    "fastapi",
+    "aiofiles",
+    "python-multipart",
+    "uvicorn",
+    "pymupdf-fonts",
+    "fastapi-login>=1.10,<2",
+    "pwdlib[argon2]>=0.3,<1",
+]
+
+[dependency-groups]
+dev = ["pynvim", "pytest", "httpx"]
+browser = ["playwright==1.63.0"]
+benchmark = [
+    "pdfplumber==0.11.10",
+    "pdfminer.six==20260107",
+    "pypdf==6.20.1",
+    "pypdfium2==5.14.0",
+    "reportlab==5.0.1",
+    "numpy==2.4.6",
+]
+
+[tool.uv]
+package = false
