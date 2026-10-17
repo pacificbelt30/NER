@@ -1,4 +1,4 @@
-import { $, ACTIVE, size, wait, request } from "./api.js";
+import { $, ACTIVE, size, wait, request, createSubmissionKey } from "./api.js";
 import { progress, renderJob as renderJobView } from "./job-view.js";
 import { createPreview } from "./preview.js";
 import { createHistory } from "./history.js";
@@ -309,28 +309,28 @@ function upload() {
 async function start() {
   if (!state.file || state.busy || !$("backend").value) return;
   if (state.job && !ACTIVE.has(state.job.status)) resetJob();
-  state.key ||= crypto.randomUUID();
-  remember({ key: state.key });
   setError("");
-  connection("");
-  controls(true);
-  $("status-card").hidden = false;
-  $("status-card").className = "status-card";
-  $("status-title").textContent = "PDFをアップロードしています";
-  $("status-label").textContent = "UPLOADING";
-  $("status-filename").textContent = state.file.name;
-  $("status-hint").textContent =
-    "アップロードが終わるまで、このページを開いたままにしてください。";
-  $("cancel-button").hidden = false;
-  $("cancel-button").disabled = false;
-  $("cancel-button").textContent = "アップロードを停止";
-  $("retry-button").hidden = true;
-  $("new-file-button").hidden = true;
-  progress(0);
   try {
+    state.key ||= createSubmissionKey();
+    remember({ key: state.key });
+    connection("");
+    controls(true);
+    $("status-card").hidden = false;
+    $("status-card").className = "status-card";
+    $("status-title").textContent = "PDFをアップロードしています";
+    $("status-label").textContent = "UPLOADING";
+    $("status-filename").textContent = state.file.name;
+    $("status-hint").textContent =
+      "アップロードが終わるまで、このページを開いたままにしてください。";
+    $("cancel-button").hidden = false;
+    $("cancel-button").disabled = false;
+    $("cancel-button").textContent = "アップロードを停止";
+    $("retry-button").hidden = true;
+    $("new-file-button").hidden = true;
+    progress(0);
     track(await upload());
   } catch (error) {
-    if (error.network || error.aborted || !error.status) {
+    if (state.key && (error.network || error.aborted || !error.status)) {
       try {
         const job = await request(`/api/jobs/by-key/${state.key}`);
         if (error.aborted && ACTIVE.has(job.status))
@@ -345,6 +345,7 @@ async function start() {
     }
     controls(false);
     setError(error.message);
+    $("status-card").hidden = false;
     $("status-title").textContent = error.aborted
       ? "アップロードを停止しました"
       : "受付を完了できませんでした";

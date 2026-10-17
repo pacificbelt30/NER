@@ -1,6 +1,14 @@
 export const $ = (id) => document.getElementById(id);
 export const ACTIVE = new Set(["queued", "running", "cancelling"]);
 
+export function createSubmissionKey() {
+  // getRandomValues also works on HTTP LAN hosts, where randomUUID is absent.
+  if (typeof globalThis.crypto?.getRandomValues !== "function")
+    throw new Error("受付情報を作成できません。このブラウザーを更新してお試しください。");
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export function size(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;

@@ -89,6 +89,8 @@ uv run --locked --group browser python scripts/verify_end_to_end.py \
 
 このスクリプトは一時ディレクトリに設定・アカウント・アップロード先を作り、実際のAPIサーバとブラウザを起動し、終了時に片付けます。通常翻訳、注意付きPDF、ログイン、未ログイン時の取得拒否、履歴検索・再取得、保存設定、中止・再試行、再起動後の復元、モバイル表示を確認します。
 
+ブラウザは `http://ner.test:<port>` をループバックへ名前解決して開き、localhostの例外に依存しないHTTP環境で検証します。送信準備のエラー表示と、同じPDFで再試行できることも確認します。
+
 [scripts/smoke_web_ui.cjs](../scripts/smoke_web_ui.cjs)はログイン導入前の補助スクリプトで、現在のログイン画面を操作する処理がありません。現在の通し確認には上記の `verify_end_to_end.py` を使用してください。
 
 ## PDF構造と保護文字列の検証

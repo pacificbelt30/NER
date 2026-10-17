@@ -195,12 +195,20 @@ def main():
 
                 from playwright.sync_api import sync_playwright
                 with sync_playwright() as playwright:
-                    browser = playwright.chromium.launch(headless=True, args=['--no-sandbox'])
+                    # A plain HTTP hostname exercises the same browser restrictions
+                    # as remote LAN access. localhost would hide secure-context bugs.
+                    browser_base = f'http://ner.test:{port}'
+                    browser = playwright.chromium.launch(headless=True, args=[
+                        '--no-sandbox', '--host-resolver-rules=MAP ner.test 127.0.0.1'])
                     try:
                         page = browser.new_page(viewport={'width': 1280, 'height': 960})
                         errors = []
+                        submissions = []
                         page.on('pageerror', lambda error: errors.append(str(error)))
-                        page.goto(base)
+                        page.on('request', lambda request: submissions.append(request.headers.get('idempotency-key'))
+                                if request.method == 'POST' and request.url.endswith('/api/jobs') else None)
+                        page.goto(browser_base)
+                        assert page.evaluate('!isSecureContext && typeof crypto.randomUUID === "undefined"')
                         page.wait_for_url('**/login?next=*')
                         page.wait_for_function('!document.querySelector("#login-submit").disabled')
                         page.screenshot(path=str(output / 'login-desktop.png'), full_page=True)
@@ -214,12 +222,22 @@ def main():
                         assert 'ユーザー名またはパスワード' in page.locator('#login-error').inner_text()
                         page.locator('#login-password').fill(auth_password)
                         page.locator('#login-submit').click()
-                        page.wait_for_url(base + '/')
+                        page.wait_for_url(browser_base + '/')
                         page.set_viewport_size({'width': 1280, 'height': 960})
                         page.wait_for_function('!document.querySelector("#backend").disabled')
                         page.locator('#pdf-file').set_input_files(str(source))
+                        # Preparation errors must be visible and must allow retry,
+                        # rather than rejecting start() before its error handler.
+                        page.evaluate('Object.defineProperty(crypto, "getRandomValues", {value: undefined, configurable: true})')
+                        page.locator('#start-button').click()
+                        page.locator('#form-error').wait_for(state='visible')
+                        assert '受付情報を作成できません' in page.locator('#form-error').inner_text()
+                        assert page.locator('#start-button').is_enabled()
+                        assert not submissions
+                        page.evaluate('delete crypto.getRandomValues')
                         page.locator('#start-button').click()
                         page.locator('#results').wait_for(state='visible', timeout=90000)
+                        assert len(submissions) == 1 and submissions[0] and len(submissions[0]) <= 64
                         def check_preview():
                             page.wait_for_function('''["original", "translated"].every(kind => {
                               const image = document.querySelector(`#${kind}-frame`);
@@ -320,7 +338,7 @@ def main():
                         context = browser.new_context(viewport={'width': 1280, 'height': 960})
                         fresh = context.new_page()
                         fresh.on('pageerror', lambda error: errors.append(str(error)))
-                        fresh.goto(base + '/#history')
+                        fresh.goto(browser_base + '/#history')
                         fresh.wait_for_function('!document.querySelector("#login-submit").disabled')
                         fresh.locator('#login-username').fill(auth_username)
                         fresh.locator('#login-password').fill(auth_password)
@@ -335,7 +353,7 @@ def main():
                         fresh.screenshot(path=str(output / 'upload-mobile.png'), full_page=True)
                         token = next(cookie['value'] for cookie in context.cookies() if cookie['name'] == 'ner_session')
                         fresh.locator('#logout-button').click()
-                        fresh.wait_for_url(base + '/login')
+                        fresh.wait_for_url(browser_base + '/login')
                         assert fresh.request.get(base + '/api/jobs').status == 401
                         # A copied token cannot be used after explicit logout.
                         assert fresh.request.get(base + '/api/jobs',
@@ -345,6 +363,8 @@ def main():
                         report['browser']['server_history_without_browser_storage'] = True
                         report['browser']['history_search_filter_download_reopen'] = True
                         report['browser']['retention_settings_saved_from_ui'] = True
+                        report['browser']['nonlocal_plain_http_upload'] = True
+                        report['browser']['upload_preparation_error_visible_and_retryable'] = True
                         report['auth']['browser_login_error_and_success'] = True
                         report['auth']['login_preserves_history_destination'] = True
                         report['auth']['browser_logout_revokes_token'] = True
