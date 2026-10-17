@@ -7,11 +7,11 @@
 [翻訳設定](configuration.md)を用意したら、リポジトリのルートで実行します。
 
 ```sh
-pipenv run python -m ner.auth setup
-pipenv run python api_server.py
+uv run --locked python -m ner.auth setup
+uv run --locked python api_server.py
 ```
 
-ブラウザで <http://127.0.0.1:8000/> を開き、対話コマンドで作成したユーザー名とパスワードでログインします。アカウント作成は初回のみです。既定のパスワードはありません。未設定の場合はログイン画面に初回設定の手順が表示され、非公開APIは `AUTH_NOT_CONFIGURED` を返します。
+ブラウザで `http://<配置先ホストの名前またはIP>:8000/` を開き、対話コマンドで作成したユーザー名とパスワードでログインします。同じPCから接続する場合だけ `http://localhost:8000/` を使います。アカウント作成は初回のみです。既定のパスワードはありません。未設定の場合はログイン画面に初回設定の手順が表示され、非公開APIは `AUTH_NOT_CONFIGURED` を返します。
 
 NERはサーバ全体で1アカウントを使います。公開のユーザー登録やユーザー別の履歴分離はありません。同じアカウントでログインしたクライアント間で、履歴と設定を共有します。
 
@@ -58,7 +58,7 @@ NERはサーバ全体で1アカウントを使います。公開のユーザー�
 パスワードを変更・再設定する場合は、同じ保存先で初回設定コマンドを実行し、サーバを再起動します。
 
 ```sh
-pipenv run python -m ner.auth setup
+uv run --locked python -m ner.auth setup
 ```
 
 新しい署名用シークレットを作るため、再起動後は以前のトークンを使えません。PDF履歴と翻訳設定は変更しません。ログイン試行は接続元アドレスごとに1分間5回までです。
@@ -70,6 +70,9 @@ pipenv run python -m ner.auth setup
 | `NER_CONFIG_PATH` | `config.yml` | サーバが読む翻訳設定 |
 | `NER_STORAGE_PATH` | `pdfstore/` | アカウント、セッション、ジョブとPDFの保存先 |
 | `NER_COOKIE_SECURE` | 未設定 | `1` でCookieにSecure属性を指定 |
+| `NER_HOST` | `0.0.0.0` | `python api_server.py` の待受アドレス |
+| `NER_PORT` | `8000` | `python api_server.py` の待受ポート |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1` | 転送ヘッダーを信頼するリバースプロキシのIP・ネットワーク |
 
 HTTPSでアクセスした場合もSecure属性を付けます。リバースプロキシでHTTPSを終端する構成では、`NER_COOKIE_SECURE=1` を指定できます。
 
@@ -78,8 +81,8 @@ HTTPSでアクセスした場合もSecure属性を付けます。リバースプ
 ```sh
 export NER_STORAGE_PATH=/path/to/ner-data
 export NER_CONFIG_PATH=/path/to/config.yml
-pipenv run python -m ner.auth setup
-pipenv run python api_server.py
+uv run --locked python -m ner.auth setup
+uv run --locked python api_server.py
 ```
 
 アカウント作成コマンドだけ保存先を指定する場合は、`--storage /path/to/ner-data` も使えます。
@@ -103,11 +106,15 @@ pdfstore/
 
 ## サーバの実行構成
 
-`python api_server.py` は `0.0.0.0:8000` で起動し、開発用の自動再読み込みを有効にします。再読み込みを使わず、ローカルから接続する例です。
+`python api_server.py` は既定で `0.0.0.0:8000` で待ち受け、自動再読み込みは無効です。`0.0.0.0` は全IPv4インターフェースで待ち受ける指定で、ブラウザに入力する接続先ではありません。リモートからはサーバの名前・IPまたは公開URLを使います。UIのAPIアクセス・プレビュー・ダウンロードは同じオリジンの相対URLを使うため、フロントエンドへのホスト名の埋め込みは不要です。
 
 ```sh
-pipenv run uvicorn api_server:app --host 127.0.0.1 --port 8000 --workers 1
+uv run --locked python api_server.py --host 0.0.0.0 --port 8080
 ```
+
+コマンドライン引数は `NER_HOST`・`NER_PORT` より優先します。開発時だけ `--reload` を追加します。`--host 127.0.0.1` は同じホストまたは同一ホストのリバースプロキシからだけ接続させる場合に使います。
+
+HTTPSのリバースプロキシを使う場合は、公開URLの `Host` をそのまま転送し、`X-Forwarded-Proto` と `X-Forwarded-For` を設定します。`FORWARDED_ALLOW_IPS` または `--forwarded-allow-ips` には実際のプロキシのIP・ネットワークを指定してください。これにより、ブラウザのOriginとサーバが認識するURLが一致します。サブパスへの配置には対応していないため、専用ホスト名の `/` に配置してください。[Docker運用](docker.md)も参照してください。
 
 APIサーバは**1ワーカー**で実行してください。キューはサーバプロセス内にあり、複数のAPIワーカーへ分散する構成には対応していません。受付上限は待機・実行・停止処理中を合わせて16ジョブで、PDFは別の1ワーカープロセスが順番に処理します。PyMuPDFをPythonスレッドから同時実行しない構成です。
 

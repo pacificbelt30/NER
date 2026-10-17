@@ -1,6 +1,7 @@
 """Stream uploads into isolated workspaces and process PDFs outside the event loop."""
 
 import asyncio
+import argparse
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from contextlib import asynccontextmanager
@@ -599,5 +600,28 @@ async def return_origin_file(file: UploadFile):
 app.mount('/assets', StaticFiles(directory=WEB_ROOT, check_dir=False), name='assets')
 
 
+def main(argv=None):
+    def port_number(value):
+        try:
+            port = int(value)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError('port must be an integer') from exc
+        if not 1 <= port <= 65535:
+            raise argparse.ArgumentTypeError('port must be between 1 and 65535')
+        return port
+
+    parser = argparse.ArgumentParser(description='Serve the NER Web UI and API (one worker).')
+    parser.add_argument('--host', default=os.environ.get('NER_HOST', '0.0.0.0'),
+                        help='Listen address (NER_HOST; default: 0.0.0.0).')
+    parser.add_argument('--port', type=port_number, default=os.environ.get('NER_PORT', '8000'),
+                        help='Listen port (NER_PORT; default: 8000).')
+    parser.add_argument('--reload', action='store_true', help='Enable development auto-reload.')
+    parser.add_argument('--forwarded-allow-ips', default=os.environ.get('FORWARDED_ALLOW_IPS', '127.0.0.1'),
+                        help='Trusted reverse proxy IP addresses or networks.')
+    args = parser.parse_args(argv)
+    uvicorn.run('api_server:app', host=args.host, port=args.port, reload=args.reload,
+                workers=1, forwarded_allow_ips=args.forwarded_allow_ips)
+
+
 if __name__ == '__main__':
-    uvicorn.run('api_server:app', port=8000, reload=True, host='0.0.0.0')
+    main()

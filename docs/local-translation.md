@@ -46,10 +46,13 @@ FONT: ''
 
 - `MODEL` はモデルサーバが公開している名前に合わせます。
 - `MAX_TOKENS` は各リクエストの出力上限です。途中で切れた応答や空の応答は訳文として採用しません。
-- `BASE_URL` に使えるホストは `127.0.0.1`・`localhost`・`::1` のみです。NERは環境変数のHTTPプロキシを使わず、このサーバに接続します。
+- `BASE_URL` はHTTP(S)のURLです。同じホストの例のほか、`http://index:8001/v1` のようなDockerサービス名や `https://model.example.com/v1` のようなリモートホストも指定できます。認証情報を埋め込んだURL・クエリ・フラグメントは指定できません。
+- `127.0.0.1`・`localhost`・`::1` への接続はHTTPプロキシを使いません。それ以外はRequestsの `HTTP_PROXY`・`HTTPS_PROXY`・`NO_PROXY` に従います。内部モデルサーバを直接呼ぶ場合は、その名前を `NO_PROXY` に含めます。
 - 通常のAPIサーバが使う8000番と重複しないよう、モデルサーバの例では8001番を使います。
 
 NERは `BASE_URL` に `/chat/completions` を付けて接続し、翻訳指示、保護トークン、ブロックの役割と見出し文脈を送ります。thinkingは無効化します。オフラインで使う場合は、モデルの重みを事前に取得してください。
+
+上のモデル起動例はNERと同じホスト上で直接実行する場合です。別ホストや別コンテナから接続する場合は、モデル側も到達可能なインターフェースで待ち受ける必要があります。NERをDockerで起動した場合のlocalhostはNERコンテナ自身です。接続先の選び方は[Docker運用](docker.md#翻訳モデルへの接続)を参照してください。
 
 ## Firefox / Bergamot
 
@@ -74,7 +77,7 @@ cmake --build firefox-translations/inference/build --target translator-cli -j 2
 ### 英日モデルの取得
 
 ```sh
-pipenv run python scripts/download_bergamot_model.py
+uv run --locked python scripts/download_bergamot_model.py
 ```
 
 MozillaのレジストリからReleaseの英日モデル、語彙、語彙ショートリストを取得・展開し、公開されているサイズとSHA-256を照合します。既定の出力先は `models/bergamot/en-ja/` です。モデル用の `config.yml` も生成します。

@@ -47,11 +47,17 @@ def index_server():
         thread.join()
 
 
-def test_index_local_request_and_reasoning_cleanup(index_server, monkeypatch):
+@pytest.mark.parametrize('hostname', ['127.0.0.1', '127.0.0.2', 'localhost'])
+def test_index_local_request_and_reasoning_cleanup(index_server, monkeypatch, hostname):
+    import socket
+
+    resolve = socket.getaddrinfo
+    monkeypatch.setattr(socket, 'getaddrinfo', lambda host, *args, **kwargs:
+                        resolve('127.0.0.1' if host == hostname else host, *args, **kwargs))
     monkeypatch.setenv('HTTP_PROXY', 'http://127.0.0.1:1')
     monkeypatch.setenv('NO_PROXY', '')
     index_server.content = '<think>internal reasoning</think> 日本語の訳文 '
-    translator = IndexTranslator({'BASE_URL': index_server.url})
+    translator = IndexTranslator({'BASE_URL': index_server.url.replace('127.0.0.1', hostname)})
     assert translator.translate('This is a sentence.') == '日本語の訳文'
     path, payload = index_server.requests[0]
     assert path == '/v1/chat/completions'
@@ -61,13 +67,46 @@ def test_index_local_request_and_reasoning_cleanup(index_server, monkeypatch):
 
 
 @pytest.mark.parametrize('url', [
-    'https://example.com/v1', 'http://127.0.0.1.example.com/v1',
     'ftp://localhost/v1', 'http://localhost/v1?redirect=1',
     'http://localhost:invalid/v1', 'http://[::1/v1',
+    'http:///v1', 'http://user:pass@index:8001/v1', 'http://index/v1#fragment',
+    'http://index:0/v1', 'http://index:65536/v1', 'http://in dex/v1',
+    'http://index\n/v1', 'http://index\\other/v1', None, 42,
 ])
-def test_index_rejects_nonlocal_endpoints(url):
-    with pytest.raises(ValueError, match='loopback'):
+def test_index_rejects_invalid_endpoints(url):
+    with pytest.raises(ValueError, match=r'HTTP\(S\) URL'):
         IndexTranslator({'BASE_URL': url})
+
+
+@pytest.mark.parametrize('url', [
+    'http://index:8001/v1', 'https://model.example.com/v1/',
+    'http://192.168.1.50:8001/v1', 'http://[2001:db8::1]:8001/v1',
+])
+def test_index_remote_endpoint_uses_configured_address(url, monkeypatch):
+    import requests
+
+    translator = IndexTranslator({'BASE_URL': url})
+    calls = []
+
+    def request(method, target, **kwargs):
+        calls.append((method, target, kwargs))
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps({'choices': [{
+            'message': {'content': '翻訳結果です。'}, 'finish_reason': 'stop',
+        }]}).encode()
+        return response
+
+    monkeypatch.setattr(translator.session, 'request', request)
+    try:
+        assert translator.translate('This is an English sentence.') == '翻訳結果です。'
+        method, target, kwargs = calls[0]
+        assert (method, target) == ('POST', url.rstrip('/') + '/chat/completions')
+        assert translator.session.trust_env is True
+        assert kwargs['timeout'] == 300
+        assert kwargs['allow_redirects'] is False
+    finally:
+        translator.close()
 
 
 @pytest.mark.parametrize('content,reason,status,match', [

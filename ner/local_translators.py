@@ -1,6 +1,7 @@
 """Local translation backends, including a persistent Bergamot worker."""
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+from ipaddress import ip_address
 from pathlib import Path
 import shutil
 import subprocess
@@ -16,22 +17,32 @@ from .validation import number, required
 class IndexTranslator(HTTPTranslator):
     def __init__(self, config):
         base_url = config.get('BASE_URL', 'http://127.0.0.1:8001/v1')
-        if not isinstance(base_url, str):
-            raise ConfigurationError('INDEX.BASE_URL must be a loopback HTTP(S) URL.')
+        error = 'INDEX.BASE_URL must be an HTTP(S) URL without credentials, query or fragment.'
+        if (not isinstance(base_url, str) or not base_url
+                or any(char.isspace() or ord(char) < 32 for char in base_url)
+                or '\\' in base_url):
+            raise ConfigurationError(error)
         try:
             parsed = urlsplit(base_url)
             if parsed.port is not None and not 0 < parsed.port <= 65535:
                 raise ValueError('Invalid port.')
         except ValueError as exc:
-            raise ConfigurationError('INDEX.BASE_URL must be a valid loopback HTTP(S) URL.') from exc
+            raise ConfigurationError(error) from exc
         if (parsed.scheme not in ('http', 'https')
-                or parsed.hostname not in ('127.0.0.1', 'localhost', '::1')
-                or parsed.username or parsed.password or parsed.query or parsed.fragment):
-            raise ConfigurationError('INDEX.BASE_URL must be a loopback HTTP(S) URL.')
+                or not parsed.hostname or '@' in parsed.netloc
+                or parsed.query or parsed.fragment):
+            raise ConfigurationError(error)
         self.url = base_url.rstrip('/') + '/chat/completions'
         self.model = required({'MODEL': 'IndexTeam/Index-Translate-2B', **config}, 'MODEL', 'INDEX')
         self.max_tokens = number(config, 'MAX_TOKENS', 4096, integer=True)
         super().__init__(config, local=True)
+        # Loopback must never go through an environment proxy. Remote model
+        # servers follow Requests' HTTP(S)_PROXY / NO_PROXY configuration.
+        try:
+            loopback = ip_address(parsed.hostname).is_loopback
+        except ValueError:
+            loopback = parsed.hostname == 'localhost'
+        self.session.trust_env = not loopback
 
     def translate(self, text):
         return self.translate_chunk(text)

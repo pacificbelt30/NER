@@ -2,7 +2,7 @@
 
 [ドキュメントの目次](README.md) · [サーバとWeb UI](server.md)
 
-既定の接続先は `http://127.0.0.1:8000` です。起動中のサーバの `/docs` と `/openapi.json` で、実装から生成する仕様を確認できます。API仕様の閲覧もログインが必要です。
+接続先は配置先のURLです。直接公開する場合は `http://<配置先ホストの名前またはIP>:8000`、HTTPSプロキシを使う場合は `https://ner.example.com` などを使います。同じPCで使う場合のみ `http://localhost:8000` です。起動中のサーバの `/docs` と `/openapi.json` で、実装から生成する仕様を確認できます。API仕様の閲覧もログインが必要です。
 
 ## 認証
 
@@ -118,7 +118,7 @@ import uuid
 
 import requests
 
-base = 'http://127.0.0.1:8000'
+base = input('NERサーバURL（例: https://ner.example.com）: ').strip().rstrip('/')
 with requests.Session() as client:
     response = client.post(base + '/api/auth/login', data={
         'username': input('ユーザー名: '),

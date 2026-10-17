@@ -19,6 +19,8 @@ TEXTRA:
   REQUEST_INTERVAL: 3
   CHUNK_CHARS: 2000
 INDEX:
+  # Use a service name / remote host when the model runs outside this process's host.
+  # In Docker, localhost means the NER container itself (see docs/docker.md).
   BASE_URL: 'http://127.0.0.1:8001/v1'
   MODEL: 'IndexTeam/Index-Translate-2B'
   MAX_TOKENS: 4096
