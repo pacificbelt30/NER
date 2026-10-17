@@ -23,6 +23,8 @@ INDEX:
   # In Docker, localhost means the NER container itself (see docs/docker.md).
   BASE_URL: 'http://127.0.0.1:8001/v1'
   MODEL: 'IndexTeam/Index-Translate-2B'
+  # Optional Bearer token for an authenticated model server.
+  # API_KEY: 'YOUR_MODEL_SERVER_API_KEY'
   MAX_TOKENS: 4096
   TIMEOUT: 300
   CHUNK_CHARS: 2000

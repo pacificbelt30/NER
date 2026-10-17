@@ -38,7 +38,7 @@ def _problem(name, exc):
                     ['BERGAMOT.WORKER_BINARY', 'BERGAMOT.BINARY'])
     if text == f'{name} must be a configuration mapping.':
         return ('INVALID_SECTION', f'{name}の設定は、項目名と値を持つYAMLのマッピングで記述してください。', [name])
-    fields = ('BASE_URL', 'MODEL', 'MAX_TOKENS', 'MODEL_CONFIG', 'BINARY', 'WORKER_BINARY',
+    fields = ('BASE_URL', 'MODEL', 'API_KEY', 'MAX_TOKENS', 'MODEL_CONFIG', 'BINARY', 'WORKER_BINARY',
               'NUM_WORKERS', 'URL', 'NAME', 'KEY', 'SECRET', 'CHUNK_CHARS', 'TIMEOUT', 'REQUEST_INTERVAL')
     for field in fields:
         if text.startswith((f'{name}.{field} ', f'{field} ')):
@@ -53,10 +53,10 @@ def _problem(name, exc):
 def backend_status(config, name, *, config_loaded=True):
     if not config_loaded:
         code, message, fields = ('CONFIGURATION_UNREADABLE',
-            'NERの設定ファイルを読み込めません。config.ymlの配置、読み取り権限、YAMLの書式を確認してください。', [])
+            '翻訳設定を読み込めません。初回は下の接続設定を保存してください。既存ファイルがある場合は読み取り権限とYAMLの書式を確認してください。', [])
     elif name not in config and config.get('PRIORITY') != name:
         code, message, fields = ('MISSING_CONFIGURATION',
-            f'{name}の設定がありません。下の手順で準備し、設定例をNERの設定ファイルに追加してください。', [name])
+            f'{name}の設定がありません。下の準備手順を確認し、「接続・モデル設定」から保存してください。', [name])
     else:
         try:
             require_real_credentials(config, name)

@@ -35,7 +35,13 @@ class IndexTranslator(HTTPTranslator):
         self.url = base_url.rstrip('/') + '/chat/completions'
         self.model = required({'MODEL': 'IndexTeam/Index-Translate-2B', **config}, 'MODEL', 'INDEX')
         self.max_tokens = number(config, 'MAX_TOKENS', 4096, integer=True)
+        api_key = config.get('API_KEY', '')
+        if (not isinstance(api_key, str) or len(api_key) > 4096
+                or any(ord(char) < 32 for char in api_key)):
+            raise ConfigurationError('INDEX.API_KEY must be text without control characters.')
         super().__init__(config, local=True)
+        if api_key:
+            self.session.headers['Authorization'] = 'Bearer ' + api_key
         # Loopback must never go through an environment proxy. Remote model
         # servers follow Requests' HTTP(S)_PROXY / NO_PROXY configuration.
         try:

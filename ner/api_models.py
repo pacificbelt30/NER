@@ -91,3 +91,15 @@ class ReviewSubmission(BaseModel):
     model_config = {'extra': 'forbid'}
     revision: int = Field(ge=0, strict=True)
     submission_key: str = Field(min_length=1, max_length=64, pattern=r'^[A-Za-z0-9_-]+$')
+
+
+class BackendSettingsUpdate(BaseModel):
+    model_config = {'extra': 'forbid', 'strict': True}
+    revision: str = Field(pattern=r'^[0-9a-f]{64}$')
+    values: dict[str, str | int | float | None] = Field(max_length=20)
+    make_default: bool = Field(False, strict=True)
+
+
+class ModelDownloadRequest(BaseModel):
+    model_config = {'extra': 'forbid'}
+    variant: Literal['gguf-q4', 'gguf-q8', 'hf'] = 'gguf-q4'

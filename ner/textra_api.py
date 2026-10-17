@@ -5,7 +5,7 @@ import pymupdf as fitz
 from .errors import ConfigurationError, PDFError, ProtectedContentError, TranslationCancelled, TranslationError
 from .paper_extract import PaperExtract
 from .translation import TranslationService
-from .yml_load import config_load
+from .configuration import effective_config
 from .text_blocks import LiteralRange, TranslationBlock
 from .pdf_warnings import PDFWarning, append_warning_report
 
@@ -16,7 +16,7 @@ class TextraConnection:
         self.result_summary = None
         startup_error = None
         try:
-            self.config = config_load('./config.yml') if config is None else config
+            self.config = effective_config() if config is None else config
         except (ConfigurationError, OSError) as exc:
             if error_policy == 'strict':
                 raise

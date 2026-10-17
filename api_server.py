@@ -27,15 +27,18 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 import uvicorn
 
-from ner import CombinePDF, PaperExtract, TextraConnection, TranslationService, config_load
+from ner import CombinePDF, PaperExtract, TextraConnection, TranslationService
 from ner.api_models import (Backend, JobListView, JobStatus, JobView, Output, ServerSettings,
-                            ReviewDraft, ReviewSubmission)
+                            ReviewDraft, ReviewSubmission, BackendSettingsUpdate, ModelDownloadRequest)
 from ner.errors import ConfigurationError, PDFError, TranslationCancelled, TranslationError
 from ner.io_utils import atomic_output
 from ner.jobs import JobExpired, JobManager, QueueFull
 from ner.pdf_warnings import PDFWarning
 from ner.auth import AuthStore, COOKIE_NAME, SESSION_SECONDS
 from ner.backend_setup import LABELS, backend_status, require_real_credentials
+from ner.configuration import ConfigurationStore, ConfigurationConflict, effective_config
+from ner.download_jobs import DownloadManager
+from ner.model_downloads import CATALOG, DownloadBusy
 from ner.review import (MANIFEST, DRAFT, load_manifest, load_review, render_review,
                         save_manifest, validate_decisions, write_json)
 
@@ -58,6 +61,8 @@ async def lifespan(app):
     app.state.auth = AuthStore(Path(base).resolve())
     app.state.pdf_pool = new_pool()
     app.state.review_lock = asyncio.Lock()
+    app.state.downloads = DownloadManager(Path(base).resolve())
+    app.state.downloads.start()
     app.state.jobs = JobManager(Path(base).resolve() / 'jobs', run_translation_job)
     app.state.jobs.start()
     async def cleanup():
@@ -71,6 +76,7 @@ async def lifespan(app):
         cleanup_task.cancel()
         await asyncio.gather(cleanup_task, return_exceptions=True)
         await app.state.jobs.close()
+        await app.state.downloads.close()
         await run_in_threadpool(app.state.pdf_pool.shutdown, wait=True, cancel_futures=True)
 
 
@@ -201,7 +207,7 @@ async def web_ui():
 
 def selected_config(backend=None):
     try:
-        config = config_load(CONFIG_PATH)
+        config = effective_config(CONFIG_PATH, base)
         chosen = backend or config.get('PRIORITY', 'GOOGLE')
         config = {**config, 'PRIORITY': chosen}
         require_real_credentials(config, chosen)
@@ -213,11 +219,70 @@ def selected_config(backend=None):
         raise api_error(503, 'BACKEND_NOT_CONFIGURED', '翻訳方式の準備が完了していません。サーバーの設定を確認してください。', True) from exc
 
 
+@app.get('/api/backend-settings')
+async def backend_settings():
+    try:
+        value = await run_in_threadpool(ConfigurationStore(CONFIG_PATH, base).view)
+    except (ConfigurationError, OSError) as exc:
+        raise api_error(503, 'SETTINGS_UNAVAILABLE', '設定を読み込めません。サーバーの設定ファイルと保存先を確認してください。', True) from exc
+    return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+
+
+@app.put('/api/backend-settings/{backend}')
+async def save_backend_settings(backend: Backend, update: BackendSettingsUpdate):
+    try:
+        value = await run_in_threadpool(ConfigurationStore(CONFIG_PATH, base).save, backend,
+                                       update.values, revision=update.revision, make_default=update.make_default)
+    except ConfigurationConflict as exc:
+        raise api_error(409, 'SETTINGS_CONFLICT', '別の画面または設定ファイルで設定が更新されました。入力を控えて設定を読み直してください。') from exc
+    except (ConfigurationError, FileNotFoundError, ValueError) as exc:
+        raise api_error(422, 'INVALID_BACKEND_SETTINGS', '設定を保存できません。必須項目・URL・数値・実行ファイルとモデルの配置を確認してください。') from exc
+    except OSError as exc:
+        raise api_error(500, 'SETTINGS_SAVE_FAILED', '設定を保存できません。データ保存先の書き込み権限と空き容量を確認してください。', True) from exc
+    return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+
+
+@app.get('/api/model-downloads')
+async def model_downloads():
+    return JSONResponse({'catalog': [{'variant': name, **value} for name, value in CATALOG.items()],
+                         'items': app.state.downloads.list()}, headers={'Cache-Control': 'no-store'})
+
+
+@app.post('/api/model-downloads', status_code=202)
+async def start_model_download(request: ModelDownloadRequest):
+    try:
+        job = app.state.downloads.submit(request.variant)
+    except DownloadBusy as exc:
+        raise api_error(409, 'DOWNLOAD_BUSY', '別のモデルを取得中です。完了または停止してから再試行してください。') from exc
+    except OSError as exc:
+        raise api_error(500, 'DOWNLOAD_STORAGE_FAILED', 'モデル取得状況を保存できません。保存先の権限と空き容量を確認してください。') from exc
+    return JSONResponse(job, status_code=202,
+                        headers={'Location': f"/api/model-downloads/{job['id']}", 'Cache-Control': 'no-store'})
+
+
+@app.get('/api/model-downloads/{job_id}')
+async def model_download_status(job_id: str):
+    try:
+        job = app.state.downloads.get(job_id)
+    except KeyError as exc:
+        raise api_error(404, 'DOWNLOAD_NOT_FOUND', 'モデル取得履歴が見つかりません。') from exc
+    return JSONResponse(job, headers={'Cache-Control': 'no-store'})
+
+
+@app.post('/api/model-downloads/{job_id}/cancel')
+async def cancel_model_download(job_id: str):
+    try:
+        job = app.state.downloads.cancel(job_id)
+    except KeyError as exc:
+        raise api_error(404, 'DOWNLOAD_NOT_FOUND', 'モデル取得履歴が見つかりません。') from exc
+    return JSONResponse(job, headers={'Cache-Control': 'no-store'})
+
+
 @app.get('/api/capabilities')
 async def capabilities():
     loaded = True
     try:
-        config = config_load(CONFIG_PATH)
+        config = effective_config(CONFIG_PATH, base)
     except ConfigurationError:
         loaded = False
         config = {}
