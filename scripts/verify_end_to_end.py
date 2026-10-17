@@ -227,6 +227,45 @@ def main():
                         page.wait_for_function('!document.querySelector("#backend").disabled')
                         assert page.locator('input[name="output"]').count() == 0
                         page.locator('#pdf-file').set_input_files(str(source))
+                        checking_states = []
+                        def fail_backend_check(route):
+                            checking_states.append(page.evaluate('''({
+                              pending: document.querySelector('#backend-status').textContent.includes('確認しています'),
+                              buttonDisabled: document.querySelector('#refresh-settings').disabled,
+                              backendDisabled: document.querySelector('#backend').disabled,
+                              startDisabled: document.querySelector('#start-button').disabled,
+                              busy: document.querySelector('#refresh-settings').getAttribute('aria-busy') === 'true'
+                            })'''))
+                            route.fulfill(status=503, json={'error': {'message': '再確認テストの通信エラー'}})
+                        page.route('**/api/capabilities', fail_backend_check)
+                        page.locator('#refresh-settings').click()
+                        page.wait_for_function('document.querySelector("#backend-status").textContent.includes("設定を確認できませんでした")')
+                        assert len(checking_states) == 1 and all(checking_states[0].values())
+                        assert page.locator('#refresh-settings').is_enabled()
+                        assert page.locator('#backend').is_disabled()
+                        page.locator('#pdf-file').set_input_files(str(source))
+                        assert page.locator('#start-button').is_disabled()
+                        page.screenshot(path=str(output / 'backend-check-failed.png'), full_page=True)
+                        page.unroute('**/api/capabilities', fail_backend_check)
+
+                        cap = session.get(base + '/api/capabilities', timeout=10).json()
+                        empty_cap = {**cap, 'backends': [{**backend, 'configured': False}
+                                                       for backend in cap['backends']]}
+                        def empty_backend_check(route):
+                            route.fulfill(json=empty_cap)
+                        page.route('**/api/capabilities', empty_backend_check)
+                        page.locator('#refresh-settings').click()
+                        page.locator('#setup-message').wait_for(state='visible')
+                        assert page.locator('#start-button').is_disabled()
+                        assert '設定済みの翻訳方式はありません' in page.locator('#backend-status').inner_text()
+                        page.unroute('**/api/capabilities', empty_backend_check)
+
+                        page.locator('#refresh-settings').click()
+                        page.wait_for_function('document.querySelector("#backend-status").textContent.includes("設定済み：")')
+                        assert 'Firefox / Bergamot' in page.locator('#backend-status').inner_text()
+                        assert page.locator('#backend').input_value() == 'BERGAMOT'
+                        assert page.locator('#start-button').is_enabled()
+                        assert page.locator('#setup-message').is_hidden()
                         # Preparation errors must be visible and must allow retry,
                         # rather than rejecting start() before its error handler.
                         page.evaluate('Object.defineProperty(crypto, "getRandomValues", {value: undefined, configurable: true})')
@@ -374,6 +413,7 @@ def main():
                         report['browser']['retention_settings_saved_from_ui'] = True
                         report['browser']['nonlocal_plain_http_upload'] = True
                         report['browser']['both_pdf_downloads_without_output_selection'] = True
+                        report['browser']['backend_refresh_pending_error_empty_and_recovery'] = True
                         report['browser']['upload_preparation_error_visible_and_retryable'] = True
                         report['auth']['browser_login_error_and_success'] = True
                         report['auth']['login_preserves_history_destination'] = True

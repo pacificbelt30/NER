@@ -12,6 +12,7 @@ const state = {
   key: null,
   xhr: null,
   capabilities: null,
+  checkingCapabilities: false,
   busy: false,
   version: 0,
 };
@@ -77,11 +78,11 @@ function controls(busy) {
   $("pdf-file").disabled = busy;
   $("dropzone").classList.toggle("locked", busy);
   $("backend").disabled =
-    busy || !state.capabilities?.backends.some((b) => b.configured);
+    busy || state.checkingCapabilities || !state.capabilities?.backends.some((b) => b.configured);
   $("start-button").disabled = busy || !state.file || $("backend").disabled;
   $("remove-file").disabled = busy;
   $("new-file-button").disabled = busy;
-  $("refresh-settings").disabled = busy;
+  $("refresh-settings").disabled = busy || state.checkingCapabilities;
 }
 
 function backendNote() {
@@ -100,6 +101,13 @@ function selectJobBackend(job) {
 }
 
 async function loadCapabilities() {
+  if (state.checkingCapabilities || state.busy) return;
+  state.checkingCapabilities = true;
+  $("refresh-settings").textContent = "確認しています…";
+  $("refresh-settings").setAttribute("aria-busy", "true");
+  $("backend-status").textContent = "サーバーの翻訳設定を確認しています…";
+  $("backend-status").classList.remove("is-error");
+  controls(state.busy);
   try {
     const cap = await request("/api/capabilities");
     const previous = $("backend").value;
@@ -123,11 +131,21 @@ async function loadCapabilities() {
       "設定済みの翻訳方式がありません。サーバーの翻訳設定を確認してから「設定を再確認」を押してください。";
     $("file-rule").textContent = `PDF · 最大${size(cap.max_upload_bytes)}`;
     backendNote();
-    controls(state.busy);
+    const labels = cap.backends.filter(backend => backend.configured).map(backend => backend.label);
+    const checkedAt = new Date().toLocaleTimeString("ja-JP");
+    $("backend-status").textContent = labels.length
+      ? `${checkedAt} 確認済み · 設定済み：${labels.join("、")}`
+      : `${checkedAt} 確認済み · 設定済みの翻訳方式はありません。`;
   } catch (error) {
-    $("setup-message").textContent = error.message;
-    $("setup-message").hidden = false;
-    $("start-button").disabled = true;
+    state.capabilities = null;
+    $("setup-message").hidden = true;
+    $("backend-status").textContent = `設定を確認できませんでした。${error.message}「設定を再確認」から再試行できます。`;
+    $("backend-status").classList.add("is-error");
+  } finally {
+    state.checkingCapabilities = false;
+    $("refresh-settings").textContent = "翻訳方式の設定を再確認";
+    $("refresh-settings").setAttribute("aria-busy", "false");
+    controls(state.busy);
   }
 }
 

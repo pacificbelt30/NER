@@ -369,6 +369,10 @@ select, input[type="search"], input[type="number"] {
   margin: 9px 0;
 }
 
+#backend-status.is-error {
+  color: var(--error);
+}
+
 .form-bottom {
   display: flex;
   align-items: center;
