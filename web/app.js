@@ -1,6 +1,7 @@
 import { $, ACTIVE, size, wait, request, createSubmissionKey } from "./api.js";
 import { progress, renderJob as renderJobView } from "./job-view.js";
 import { createPreview } from "./preview.js";
+import { createReview } from "./review.js";
 import { createHistory } from "./history.js";
 import { createSettings } from "./settings.js";
 import { initializeAuth, loginRequired } from "./auth.js";
@@ -17,11 +18,17 @@ const state = {
   version: 0,
 };
 const preview = createPreview(() => state.job, renderJob, expiredJob);
+const review = createReview(job => {
+  preview.clear();
+  review.clear();
+  track(job);
+  $("status-card").scrollIntoView({ behavior: "smooth", block: "start" });
+}, preview.showPage);
 const history = createHistory(async id => {
   if (state.xhr) throw new Error("アップロードが完了してから履歴を開いてください。");
   const job = await request(`/api/jobs/${id}`);
   if (state.xhr) throw new Error("アップロードが完了してから履歴を開いてください。");
-  newFile();
+  if (newFile() === false) return;
   selectJobBackend(job);
   track(job);
   location.hash = "translate";
@@ -47,6 +54,8 @@ window.addEventListener("hashchange", showView);
 function renderJob(job) {
   const previousStatus = state.job?.status;
   renderJobView(state, job, { controls, remember, showResults: preview.render });
+  review.render(job);
+  if (job.status !== "succeeded") $("results").hidden = true;
   $("upload-panel").hidden = job.status === "succeeded" || ACTIVE.has(job.status);
   if (previousStatus !== job.status && location.hash === "#history") void history.load();
 }
@@ -164,7 +173,7 @@ function chooseFile(file) {
     setError(`PDFは${size(limit)}以内にしてください。`);
     return;
   }
-  resetJob();
+  if (!resetJob()) return;
   if (state.blob) URL.revokeObjectURL(state.blob);
   state.file = file;
   state.blob = URL.createObjectURL(file);
@@ -179,10 +188,12 @@ function chooseFile(file) {
 }
 
 function resetJob() {
+  if (!review.canLeave()) return false;
   state.version++;
   state.job = null;
   state.key = null;
   preview.clear();
+  review.clear();
   remember(null);
   $("status-card").hidden = true;
   $("results").hidden = true;
@@ -190,11 +201,12 @@ function resetJob() {
   $("original-frame").removeAttribute("src");
   $("translated-frame").removeAttribute("src");
   connection("");
+  return true;
 }
 
 function newFile() {
   if (state.xhr) return;
-  resetJob();
+  if (!resetJob()) return false;
   if (state.blob) URL.revokeObjectURL(state.blob);
   state.file = null;
   state.blob = null;
@@ -318,7 +330,7 @@ function upload() {
 
 async function start() {
   if (!state.file || state.busy || !$("backend").value) return;
-  if (state.job && !ACTIVE.has(state.job.status)) resetJob();
+  if (state.job && !ACTIVE.has(state.job.status) && !resetJob()) return;
   setError("");
   try {
     state.key ||= createSubmissionKey();

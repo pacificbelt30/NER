@@ -277,6 +277,20 @@
           <p class="viewer-note">
             表示できない場合は別タブで開くかダウンロードしてください。翻訳内容は原文と照らし合わせてご確認ください。
           </p>
+          <section id="review-panel" class="review-panel" hidden aria-labelledby="review-title">
+            <div class="section-heading">
+              <h2 id="review-title">注意箇所の確認・修正</h2>
+              <span id="review-count" class="muted"></span>
+            </div>
+            <p id="review-message" class="field-note" role="status" aria-live="polite"></p>
+            <div class="review-toolbar">
+              <button id="review-save" class="secondary-button" type="button" hidden>下書きを保存</button>
+              <button id="review-apply" class="primary-button" type="button" hidden>確認内容をPDFに反映</button>
+              <button id="review-prepare" class="secondary-button" type="button" hidden>原本を再翻訳して編集を始める</button>
+              <button id="review-reload" class="text-button" type="button">下書きを読み直す</button>
+            </div>
+            <div id="review-list"></div>
+          </section>
         </section>
         <section
           id="local-preview"

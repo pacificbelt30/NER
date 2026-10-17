@@ -29,6 +29,10 @@
 | GET | `/api/jobs/by-key/{key}` | 受付キーからジョブを取得 |
 | POST | `/api/jobs/{id}/cancel` | 待機・実行中のジョブを中止 |
 | POST | `/api/jobs/{id}/retry` | 失敗・停止したジョブを、新しいジョブとして再試行 |
+| GET | `/api/jobs/{id}/review` | 注意箇所の原文・候補・保存済みの採用方針を取得 |
+| PUT | `/api/jobs/{id}/review` | 採用方針・修正文の下書きを保存 |
+| POST | `/api/jobs/{id}/review` | 下書きから修正版PDFを作成 |
+| POST | `/api/jobs/{id}/review/prepare` | 編集データのない以前の履歴を原本から再翻訳 |
 | GET | `/api/jobs/{id}/files/{kind}` | `original`・`translated`・`comparison` のPDFを取得 |
 | GET | `/api/jobs/{id}/preview/{kind}?page=1` | `original`・`translated` のページをPNGで取得 |
 | GET | `/api/settings` | 保存期間設定を取得 |
@@ -105,6 +109,30 @@
 ```
 
 `null` は無期限、整数の1〜3650は完了後の日数です。変更は今後完了するジョブに適用し、既存の期限を変更しません。ジョブの `expires_at: null` も期限なしを表します。`/api/capabilities` の `result_retention_seconds` は無期限の場合 `null` です。
+
+### 注意箇所の確認・修正
+
+完了済みジョブに対して利用できます。`GET /api/jobs/{id}/review` は `available`、`revision`、`items` を返します。各項目の `source`・`candidate`・`candidate_complete`・`candidate_validated`・`can_adopt`・`literals` で原文と候補を比較できます。`editable: false` の文書全体・ページ全体の注意は、本文修正では解消できません。
+
+`PUT` には取得した `revision` と、ブロックごとの判断を渡します。
+
+```json
+{"revision": 0, "decisions": [{"id": "取得した項目ID", "action": "edit", "text": "参照先 https://example.org/fixed を確認してください。"}]}
+```
+
+`action` は `pending`・`original`・`adopt`・`edit` です。`text` は `edit` のときだけ指定し、空欄や内部の保護記号を含まない2万文字以内の本文にします。`decisions` は下書き全体の置換です。指定を省いたブロックは未確認になります。保存すると `revision` が増えます。他の画面で先に保存された場合はHTTP 409・`REVIEW_CONFLICT` を返し、上書きしません。
+
+保存後の `revision` と新しい受付キーを `POST` に渡します。
+
+```json
+{"revision": 1, "submission_key": "unique-review-key"}
+```
+
+HTTP 202で通常のジョブを返します。`kind: "review"`、`parent_id` が修正元の履歴IDです。同じキー・修正元・リビジョンの再送は同じジョブを返します。`kind: "translation"` は通常の翻訳です。編集用データの再作成にも `parent_id` を残します。元の履歴は変更せず、モデルを呼ばずに原本から再配置します。修正版にも訳文・比較用PDFがあります。
+
+修正版の確認項目の `applied` は、その判断を最後のPDFに反映できた場合 `true`、配置失敗で原文を保持した場合 `false`、未確認または新たに下書きを変更した場合 `null` です。失敗した修正は通常の注意として残します。修正版の再試行もモデルを呼ばず、保存済みの修正内容を再配置します。
+
+`available: false` の以前の履歴は `POST /review/prepare` で編集用データを作成できます。この操作は原本を再翻訳するためエンジンが必要です。元の翻訳方式を既定とし、任意のフォーム項目 `backend` で変更できます。[画面操作と保存内容](human-review.md)も参照してください。
 
 ## Pythonクライアントの例
 

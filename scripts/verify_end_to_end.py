@@ -343,6 +343,59 @@ def main():
                         assert not errors, errors
                         report['browser']['partial_failure_download_and_reload'] = True
 
+                        # Human review persists a draft, keeps unsafe edits out of
+                        # the source page, then accepts the original explicitly.
+                        review_card = page.locator('.review-card').first
+                        review_card.wait_for(state='visible')
+                        review_parent_id = page.locator('#results').get_attribute('data-job')
+                        review_card.locator('.review-action').select_option('edit')
+                        manual_text = '手動で確認した本文です。参照先 https://example.net/fixed を確認してください。'
+                        review_card.locator('textarea').fill(manual_text)
+                        page.route('**/api/jobs/*/review', lambda route: route.fulfill(
+                            status=503, json={'error': {'message': '下書き保存のテストエラー'}})
+                            if route.request.method == 'PUT' else route.continue_())
+                        page.locator('#review-save').click()
+                        page.wait_for_function("document.getElementById('review-message').textContent.includes('テストエラー')")
+                        assert review_card.locator('textarea').input_value() == manual_text
+                        page.unroute('**/api/jobs/*/review')
+                        page.locator('#review-save').click()
+                        page.wait_for_function("document.getElementById('review-message').textContent.includes('下書きを保存しました')")
+                        page.reload()
+                        page.locator('.review-card textarea').wait_for(state='visible')
+                        assert review_card.locator('textarea').input_value() == manual_text
+                        assert review_card.locator('.review-action').input_value() == 'edit'
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        page.screenshot(path=str(output / 'review-edit-mobile.png'), full_page=True)
+                        page.locator('#review-apply').click()
+                        page.wait_for_function('(id) => document.getElementById("results").dataset.job !== id && !document.getElementById("results").hidden',
+                                               arg=review_parent_id, timeout=30000)
+                        page.wait_for_function("document.querySelector('.review-card')?.textContent.includes('安全に配置できず')")
+                        failed_edit_id = page.locator('#results').get_attribute('data-job')
+                        with page.expect_download() as download:
+                            page.locator('#download-translated').click()
+                        download.value.save_as(str(output / 'browser-manual-unplaced.pdf'))
+                        with fitz.open(output / 'browser-manual-unplaced.pdf') as document:
+                            assert '手動で確認' in ''.join(''.join(p.get_text().split()) for p in list(document)[1:])
+                            assert 'This rotated paragraph' in document[0].get_text()
+                        review_card.locator('.review-action').select_option('original')
+                        page.locator('#review-apply').click()
+                        page.wait_for_function('(id) => document.getElementById("results").dataset.job !== id && !document.getElementById("results").hidden',
+                                               arg=failed_edit_id, timeout=30000)
+                        page.wait_for_function("document.querySelector('.review-card')?.textContent.includes('確認内容を反映済み')")
+                        assert page.locator('#status-title').inner_text() == '翻訳が完了しました'
+                        with page.expect_download() as download:
+                            page.locator('#download-translated').click()
+                        download.value.save_as(str(output / 'browser-human-reviewed.pdf'))
+                        with fitz.open(output / 'browser-human-reviewed.pdf') as document:
+                            assert len(document) == 1
+                            assert 'This rotated paragraph' in document[0].get_text()
+                            assert json.loads(document.embfile_get('ner-human-review.json'))['decisions'][0]['action'] == 'original'
+                        page.screenshot(path=str(output / 'review-applied-mobile.png'), full_page=True)
+                        assert not errors, errors
+                        report['browser']['human_review_draft_error_retry_and_reload'] = True
+                        report['browser']['human_review_failed_placement_keeps_original'] = True
+                        report['browser']['human_review_original_decision_new_history_and_pdf'] = True
+
                         page.locator('#nav-history').click()
                         page.locator(f'.history-row[data-job="{receipt["id"]}"]').wait_for()
                         assert page.locator(f'.history-row[data-job="{recovered["id"]}"] .warning').count() == 1

@@ -82,7 +82,7 @@ export function createPreview(getJob, onRefresh, onError) {
       image.style.width = `${$("preview-zoom").value}%`;
     });
   });
-  return { render, clear() {
+  return { render, showPage, clear() {
     version++;
     clearTimeout(expiryTimer);
     delete $("results").dataset.job;

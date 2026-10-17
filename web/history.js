@@ -30,6 +30,7 @@ export function createHistory(openJob) {
       year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
     });
     content.append(element("p", "muted", `${date} · ${job.backend}`));
+    if (job.kind === "review") content.append(element("p", "history-detail", "人が確認・修正したPDF"));
     const warningCount = job.result_summary?.warning_count || 0;
     const withWarnings = job.status === "succeeded" && warningCount > 0;
     const badge = element("span", `status-badge ${withWarnings ? "warning" : job.status}`,

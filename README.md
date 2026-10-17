@@ -9,6 +9,7 @@
 - 翻訳履歴の検索、結果の再表示、PDFの再ダウンロード。保存期間は既定で無期限。
 - 1アカウントのログインと、画面からの保存期間設定。
 - 一部の翻訳や配置に失敗しても、原文を残した「注意付きPDF」を出力。
+- 注意箇所を後から確認し、原文・候補の採用や手修正を選んで修正版PDFを作成。
 
 対象は文字を選択できる英語PDFです。スキャン画像には事前の文字認識（OCR）が必要です。複雑な表や段組みなど、元のレイアウトを完全に再現できない文書もあります。
 
@@ -82,6 +83,7 @@ uv run --locked python launcher.py help
 | 翻訳エンジン、フォント、再試行などの設定 | [翻訳設定](docs/configuration.md) |
 | Index・Bergamotの導入とモデルの準備 | [ローカル翻訳](docs/local-translation.md) |
 | ログイン、履歴、保存期間、サーバ運用 | [サーバとWeb UI](docs/server.md) |
+| 注意箇所の採用判断、URL・本文の手修正 | [注意箇所の確認と手修正](docs/human-review.md) |
 | Docker・Compose、永続化、リモート配置 | [Docker運用](docs/docker.md) |
 | 認証、ジョブ、ダウンロード、旧API | [API仕様](docs/api.md) |
 | 翻訳対象の判定、表、レイアウト、エラー時の出力 | [PDF処理とエラー方針](docs/pdf-layout.md) |
