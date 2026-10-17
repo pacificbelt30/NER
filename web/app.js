@@ -5,6 +5,7 @@ import { createReview } from "./review.js";
 import { createHistory } from "./history.js";
 import { createSettings } from "./settings.js";
 import { createBackendSetup } from "./backend-setup.js";
+import { createBackendManagement } from "./backend-management.js";
 import { initializeAuth, loginRequired } from "./auth.js";
 const STORAGE = "ner:last-job:v1";
 const state = {
@@ -43,6 +44,7 @@ const backendSetup = createBackendSetup(() => void loadCapabilities(), id => {
   backendNote();
   location.hash = "translate";
 });
+const backendManagement = createBackendManagement(loadCapabilities);
 
 function showView() {
   const [route, backendId] = location.hash.slice(1).split("/");
@@ -57,6 +59,7 @@ function showView() {
   if (view === "settings") {
     void settings.load();
     backendSetup.focus(backendId);
+    void backendManagement.load();
     void loadCapabilities();
   }
 }

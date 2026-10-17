@@ -1152,3 +1152,10 @@ footer a {
   .settings-card > .section-heading { flex-direction: column; align-items: flex-start; gap: .75rem; }
   .setup-snippet > .section-heading { flex-wrap: wrap; gap: .5rem; }
 }
+
+.backend-config-form, .model-download-panel { border-top: 1px solid #d5dbd5; margin-top: 1.25rem; padding-top: 1rem; }
+.backend-config-field { margin: .8rem 0; }
+.backend-config-field input { display: block; width: 100%; min-width: 0; padding: .65rem; border: 1px solid #b7bab3; border-radius: 6px; font: inherit; }
+.setup-checkbox { display: flex; align-items: flex-start; gap: .5rem; margin: .75rem 0; }
+.setup-checkbox input { margin-top: .25rem; }
+.download-progress { display: block; width: 100%; margin: .75rem 0; accent-color: #2a6452; }

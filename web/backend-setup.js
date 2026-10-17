@@ -7,7 +7,7 @@ const GUIDES = {
     steps: [
       "IndexTeam/Index-Translate-2Bのモデルを取得し、OpenAI Chat Completions互換のモデルサーバーを別途起動します。GPU・CPU環境に合うvLLMやllama.cppの導入手順は詳細ドキュメントを確認してください。NERのインストールだけではモデルサーバーは起動しません。",
       "NERを動かすサーバーから到達できるホスト名・IP・ポートを確認します。以下のモデルサーバーのホスト名を実際の配置先に置き換えてください。NERの8000番と重複しないポートを使います。",
-      "INDEX.BASE_URLに /v1 までのURL、MODELにモデルサーバーが公開するモデル名を設定します。NERが /chat/completions を付けて接続します。",
+      "上の接続設定で、INDEX.BASE_URLに /v1 までのURL、MODELにモデルサーバーが公開するモデル名を保存します。NERが /chat/completions を付けて接続します。",
     ],
     config: "INDEX:\n  BASE_URL: 'http://<モデルサーバーのホスト名またはIP>:8001/v1'\n  MODEL: 'IndexTeam/Index-Translate-2B'\n  MAX_TOKENS: 4096\n  TIMEOUT: 300\n  CHUNK_CHARS: 2000\n",
     docker: "Docker内のlocalhostはNERコンテナ自身です。同じネットワークのモデルなら http://index:8001/v1、Dockerホストなら http://host.docker.internal:8001/v1、別ホストならその名前・IPを指定します。モデル側もNERから接続できるアドレスで待ち受ける必要があります。",
@@ -116,7 +116,7 @@ export function createBackendSetup(refresh, selectBackend) {
       docker.append(link);
       details.append(docker);
     }
-    details.append(node("p", "field-note", "設定を保存したら、上の「翻訳方式の設定を再確認」を押してください。設定の確認後、小さなPDFで実際の翻訳を試せます。"));
+    details.append(node("p", "field-note", "接続設定を保存すると、設定状況も確認します。準備後は小さなPDFで実際の翻訳を試してください。YAMLを直接編集した場合は「翻訳方式の設定を再確認」を押します。"));
     const actions = node("div", "setup-actions");
     const docs = node("a", "text-button", "詳細ドキュメント（GitHub）↗");
     docs.href = DOCS + guide.docs; docs.target = "_blank"; docs.rel = "noopener noreferrer";

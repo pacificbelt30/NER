@@ -46,6 +46,8 @@ docker compose up -d --build
 
 `down` では名前付きボリュームが残ります。`down --volumes` はログイン情報と履歴を含めて削除するため、保存する場合は付けないでください。バックアップはサーバを停止してボリューム全体と `config.yml` を保存します。既存データを移す場合はUID/GID 10001が読み書きできる所有権にしてください。
 
+Web UIから保存したAPI設定と、取得したIndexモデル・取得履歴も `/data` に永続化します。読み取り専用の `config.yml` は変更しません。CLIでも `docker compose run --rm ner python launcher.py dl index` や `config set index --base-url ...` を利用できます。設定の優先順位とモデル共有は[モデル取得と接続設定](model-management.md)を参照してください。
+
 パスワードの変更には初回と同じ `docker compose run --rm ner python -m ner.auth setup` を使い、その後に `docker compose restart ner` を実行します。
 
 ## 翻訳モデルへの接続

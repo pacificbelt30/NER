@@ -25,7 +25,10 @@ uv run --locked python -m nltk.downloader punkt punkt_tab
 
 | ファイル | 役割 |
 | --- | --- |
-| [launcher.py](../launcher.py) | CLIの `translate`・`combine`・`info`・`help` |
+| [launcher.py](../launcher.py) | CLIの翻訳・比較・情報表示・`dl`・`config` |
+| [ner/configuration.py](../ner/configuration.py) | YAMLと画面・CLIの共有接続設定、秘密情報のマスク、保存競合の検出 |
+| [ner/model_downloads.py](../ner/model_downloads.py) | Index公式モデルの取得、再開、サイズ・ハッシュ検証 |
+| [ner/download_jobs.py](../ner/download_jobs.py) | モデル取得のバックグラウンド実行、停止、進捗・履歴の永続化 |
 | [api_server.py](../api_server.py) | ログイン、アップロード、ジョブ、ダウンロード、Web UI配信 |
 | [ner/auth.py](../ner/auth.py) | 1アカウント認証、セッションの継続・失効、初回設定 |
 | [ner/jobs.py](../ner/jobs.py) | 単一キュー、履歴・保存期間、再起動後の復元 |
@@ -55,6 +58,7 @@ uv run --locked python -m nltk.downloader punkt punkt_tab
 | [web/preview.js](../web/preview.js) | ページ表示、拡大、古い非同期応答の無効化 |
 | [web/history.js](../web/history.js) | 履歴検索、絞り込み、一覧・取得 |
 | [web/settings.js](../web/settings.js) | 保存期間設定 |
+| [web/backend-management.js](../web/backend-management.js) | 接続設定の保存、秘密情報の維持、Index取得の進捗・停止・再試行 |
 
 動的なファイル名・エラーメッセージはHTMLとして挿入せず、テキストとして表示します。認証トークンをlocalStorageへ保存する実装ではありません。
 

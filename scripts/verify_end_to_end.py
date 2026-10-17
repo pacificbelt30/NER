@@ -298,6 +298,84 @@ def main():
                         page.unroute('**/api/capabilities', empty_backend_check)
                         page.locator('#setup-refresh').click()
                         page.wait_for_function("document.querySelector('#setup-status').textContent.includes('設定済み：')")
+                        # Save actual backend settings through the UI and verify
+                        # the key is masked after persistence and page reload.
+                        config_form = page.locator('.backend-config-form[data-backend="INDEX"]')
+                        config_form.get_by_role('button', name='設定を保存', exact=True).wait_for()
+                        page.wait_for_function("!document.querySelector('.backend-config-form[data-backend=INDEX] button[type=submit]').disabled")
+                        config_form.locator('[name=BASE_URL]').fill('http://model.example:8001/v1')
+                        config_form.locator('[name=API_KEY]').fill('browser-only-test-key')
+                        config_form.locator('input[type=checkbox]').last.check()
+                        page.route('**/api/backend-settings/INDEX', lambda route: route.fulfill(status=503,
+                            json={'error': {'message': '設定保存のテストエラー'}}))
+                        config_form.get_by_role('button', name='設定を保存', exact=True).click()
+                        page.wait_for_function("document.querySelector('.backend-config-form[data-backend=INDEX]').textContent.includes('設定保存のテストエラー')")
+                        assert config_form.locator('[name=API_KEY]').input_value() == 'browser-only-test-key'
+                        page.unroute('**/api/backend-settings/INDEX')
+                        config_form.get_by_role('button', name='設定を保存', exact=True).click()
+                        page.wait_for_function("document.querySelector('.backend-config-form[data-backend=INDEX]').textContent.includes('保存しました')")
+                        assert config_form.locator('[name=API_KEY]').input_value() == ''
+                        persisted = session.get(base + '/api/backend-settings', timeout=10)
+                        assert 'browser-only-test-key' not in persisted.text
+                        assert persisted.json()['backends']['INDEX']['secrets_set']['API_KEY']
+                        assert persisted.json()['default_backend'] == 'INDEX'
+                        assert not page.locator('.backend-config-form[data-backend="BERGAMOT"] input[type=checkbox]').is_checked()
+                        assert yaml.safe_load((workspace / 'config.yml').read_text()) == config
+                        page.reload()
+                        page.wait_for_function("document.querySelector('#config-INDEX-BASE_URL').value === 'http://model.example:8001/v1'")
+                        assert config_form.locator('[name=API_KEY]').input_value() == ''
+                        assert '登録済み' in config_form.locator('[name=API_KEY]').get_attribute('placeholder')
+                        page.wait_for_function("document.querySelectorAll('#index-download-format option').length > 0")
+
+                        # UI acquisition states use a deterministic transport
+                        # fixture; the real downloader is covered by byte/range
+                        # and checksum tests, without downloading GBs here.
+                        catalog = session.get(base + '/api/model-downloads', timeout=10).json()['catalog']
+                        mock_download = {'job': None, 'attempt': 0}
+                        def download_collection(route):
+                            if route.request.method == 'POST':
+                                mock_download['attempt'] += 1
+                                mock_download['job'] = {'id': 'browser-model-download', 'status': 'queued',
+                                    'variant': 'gguf-q4', 'stage': 'queued', 'downloaded_bytes': 0, 'total_bytes': 100,
+                                    'file': None, 'error': None, 'result': None}
+                                route.fulfill(status=202, json=mock_download['job'])
+                            else:
+                                route.fulfill(json={'catalog': catalog, 'items': [mock_download['job']] if mock_download['job'] else []})
+                        def download_progress(route):
+                            job = mock_download['job']
+                            if mock_download['attempt'] == 1:
+                                job.update(status='running', stage='downloading', downloaded_bytes=50)
+                            elif mock_download['attempt'] == 2:
+                                job.update(status='failed', error={'message': 'テスト用の取得失敗'})
+                            else:
+                                job.update(status='succeeded', stage='done', downloaded_bytes=100,
+                                    result={'directory': '/models/index/gguf-q4', 'model_path': '/models/index/gguf-q4/model.gguf'})
+                            route.fulfill(json=job)
+                        def download_cancel(route):
+                            mock_download['job'].update(status='cancelled')
+                            route.fulfill(json=mock_download['job'])
+                        page.route('**/api/model-downloads', download_collection)
+                        page.route('**/api/model-downloads/browser-model-download', download_progress)
+                        page.route('**/api/model-downloads/browser-model-download/cancel', download_cancel)
+                        page.locator('#index-download-start').click()
+                        page.wait_for_function("document.querySelector('#index-download-status').textContent.includes('50 B')")
+                        assert page.locator('#index-download-start').is_disabled()
+                        page.locator('#index-download-cancel').click()
+                        page.wait_for_function("document.querySelector('#index-download-status').textContent.includes('停止しました')")
+                        page.locator('#index-download-start').click()
+                        page.wait_for_function("document.querySelector('#index-download-status').textContent.includes('テスト用の取得失敗')")
+                        page.locator('#index-download-start').click()
+                        page.locator('#index-download-result').wait_for(state='visible')
+                        assert 'llama-server' in page.locator('#index-download-result').inner_text()
+                        page.reload()
+                        page.locator('#index-download-result').wait_for(state='visible')
+                        page.set_viewport_size({'width': 390, 'height': 844})
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        page.screenshot(path=str(output / 'backend-management-mobile.png'), full_page=True)
+                        page.set_viewport_size({'width': 1280, 'height': 960})
+                        page.unroute('**/api/model-downloads', download_collection)
+                        page.unroute('**/api/model-downloads/browser-model-download', download_progress)
+                        page.unroute('**/api/model-downloads/browser-model-download/cancel', download_cancel)
                         bergamot_guide.locator(':scope > summary').click()
                         bergamot_guide.get_by_role('button', name='この方式で翻訳する').click()
                         page.locator('#translate-view').wait_for(state='visible')
@@ -511,6 +589,8 @@ def main():
                         report['browser']['disabled_backend_setup_link_reason_config_and_docker_help'] = True
                         report['browser']['setup_deep_link_reload_and_empty_configuration_recovery'] = True
                         report['browser']['setup_copy_on_plain_http_and_ready_backend_return'] = True
+                        report['browser']['backend_settings_save_error_retry_and_masked_reload'] = True
+                        report['browser']['model_download_progress_cancel_error_retry_and_reload_ui_fixture'] = True
                         report['browser']['upload_preparation_error_visible_and_retryable'] = True
                         report['auth']['browser_login_error_and_success'] = True
                         report['auth']['login_preserves_history_destination'] = True

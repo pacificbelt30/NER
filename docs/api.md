@@ -37,6 +37,12 @@
 | GET | `/api/jobs/{id}/preview/{kind}?page=1` | `original`・`translated` のページをPNGで取得 |
 | GET | `/api/settings` | 保存期間設定を取得 |
 | PUT | `/api/settings` | 保存期間設定を変更 |
+| GET | `/api/backend-settings` | 保存済み接続設定と更新リビジョンを取得（秘密情報はマスク） |
+| PUT | `/api/backend-settings/{backend}` | 接続先・モデル名・認証情報などを保存 |
+| GET | `/api/model-downloads` | Indexの取得可能な形式と取得履歴を取得 |
+| POST | `/api/model-downloads` | Index公式モデルの取得を受付 |
+| GET | `/api/model-downloads/{id}` | 取得状況・進捗・失敗理由・保存先を取得 |
+| POST | `/api/model-downloads/{id}/cancel` | モデル取得を停止 |
 
 `GET /api/capabilities` は `Cache-Control: no-store` を付け、サーバー設定をその都度確認します。`configuration.loaded` で設定ファイルを読めたか確認でき、読めなかった場合も全方式の準備先を返します。各 `backends` の `setup` は次の診断情報です。
 
@@ -49,6 +55,28 @@
 | `verification` | `configuration_only`。稼働・認証・推論は未確認 |
 
 既存の `configured` は、設定ファイルと構成の確認を通った場合に `true` です。ネットワークへの疎通確認や推論を実行したことは意味しません。TexTraの既知のサンプル認証情報は `SAMPLE_CREDENTIALS` として選択できず、ジョブを直接送信した場合も `BACKEND_NOT_CONFIGURED` を返します。APIキー・秘密情報・接続先の設定値・サーバー内のパスは診断応答に含めません。
+
+### 接続設定の保存
+
+`GET /api/backend-settings` は `revision`、`default_backend`、方式ごとの `backends` を返します。各方式の `values` に通常の設定値、`secrets_set` に秘密情報を保存済みかの真偽値を含めます。APIキー・シークレットの値は返しません。
+
+保存時は取得した64桁の `revision` と、変更する項目を指定します。
+
+```json
+{"revision":"取得したリビジョン","values":{"BASE_URL":"http://model.example.com:8001/v1","MODEL":"IndexTeam/Index-Translate-2B","API_KEY":"任意のBearerキー"},"make_default":true}
+```
+
+`PUT /api/backend-settings/INDEX` のほか、`GOOGLE`・`TEXTRA`・`BERGAMOT` に対応します。項目名はYAMLと同じです。指定を省略した項目や秘密情報の `null` は維持します。Indexの `API_KEY` に空文字列を渡すと解除します。`make_default` の既定値は `false` です。保存した項目は読み取り専用のYAMLを変更せず、共有保存先へ0600の権限で永続化し、次に開始する翻訳から優先して使います。
+
+成功時はマスク済みの新しい設定とリビジョンを返します。元のYAML・保存済み設定が先に更新された場合はHTTP 409・`SETTINGS_CONFLICT`、無効な項目・値・ファイル配置はHTTP 422・`INVALID_BACKEND_SETTINGS` を返します。リビジョンを読み直す前に必要な入力を控えてください。
+
+### モデル取得
+
+`POST /api/model-downloads` に `{"variant":"gguf-q4"}` を渡すとHTTP 202と `Location` を返します。形式は `gguf-q4`（既定）・`gguf-q8`・`hf` です。保存先はサーバーのデータディレクトリ内に固定し、APIから任意のURLや保存先は指定できません。同じ形式の実行中リクエストは同じ取得ジョブを返し、別形式の同時取得はHTTP 409・`DOWNLOAD_BUSY` になります。
+
+`GET /api/model-downloads/{id}` で `status`（`queued`・`running`・`cancelling`・`succeeded`・`failed`・`cancelled`）、`stage`、`downloaded_bytes`、`total_bytes`、処理中の `file` を確認します。完了時は `result.directory`・`result.model_path`・固定リビジョンを返します。失敗時の `error` は機密情報を含まない説明で、署名付きダウンロードURLや生の例外は含めません。
+
+停止は `POST /api/model-downloads/{id}/cancel`、再試行は同じ形式の新しい `POST` です。再試行時には検証済みファイルと利用可能な途中のファイルを再利用します。サーバー再起動で実行中だった取得は `SERVER_INTERRUPTED` として履歴に残します。モデルサーバー自体のインストール・起動は行いません。[画面・CLIの操作](model-management.md)も参照してください。
 
 ### 翻訳の受付
 

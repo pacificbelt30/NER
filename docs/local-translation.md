@@ -10,6 +10,8 @@ Index-Translate-2BとFirefox / Bergamotを使用できます。英語から日�
 
 NERとは別のプロセスで、[IndexTeam/Index-Translate-2B](https://huggingface.co/IndexTeam/Index-Translate-2B)を提供するChat Completions互換サーバを起動します。モデルサーバの依存関係はNERのPython環境に追加する必要はありません。
 
+モデルはWeb UIの設定画面、または `uv run --locked python launcher.py dl index` で取得できます。GGUF Q4_K_M・Q8_0・標準Safetensors一式に対応します。[取得方法とAPI接続設定](model-management.md)を参照してください。モデルサーバーの実行環境の準備は以下の手順を使います。
+
 ### モデルサーバの起動例
 
 GPU環境では、Qwen3.5に対応する実行環境が必要です。別のCUDA環境でのvLLM起動例です。
@@ -45,6 +47,7 @@ FONT: ''
 ```
 
 - `MODEL` はモデルサーバが公開している名前に合わせます。
+- 認証付きのモデルサーバーには、任意の `API_KEY` を指定できます。HTTPの `Authorization: Bearer ...` として送ります。画面・CLIで保存したキーは設定確認の応答には含めません。
 - `MAX_TOKENS` は各リクエストの出力上限です。途中で切れた応答や空の応答は訳文として採用しません。
 - `BASE_URL` はHTTP(S)のURLです。同じホストの例のほか、`http://index:8001/v1` のようなDockerサービス名や `https://model.example.com/v1` のようなリモートホストも指定できます。認証情報を埋め込んだURL・クエリ・フラグメントは指定できません。
 - `127.0.0.1`・`localhost`・`::1` への接続はHTTPプロキシを使いません。それ以外はRequestsの `HTTP_PROXY`・`HTTPS_PROXY`・`NO_PROXY` に従います。内部モデルサーバを直接呼ぶ場合は、その名前を `NO_PROXY` に含めます。

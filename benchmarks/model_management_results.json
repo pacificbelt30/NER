@@ -1,0 +1,91 @@
+{
+  "unit_tests": {
+    "passed": 355,
+    "failed": 0
+  },
+  "end_to_end": {
+    "cli": {
+      "info_without_config": true,
+      "native_translation": true,
+      "alternating_comparison": true,
+      "missing_file_nonzero": true,
+      "source_unchanged": true,
+      "partial_failure_still_outputs_pdf": true
+    },
+    "auth": {
+      "unauthenticated_api_and_legacy_blocked": true,
+      "cookie_login": true,
+      "browser_login_error_and_success": true,
+      "login_preserves_history_destination": true,
+      "browser_logout_revokes_token": true,
+      "session_survives_server_restart": true
+    },
+    "http": {
+      "native_job_and_downloads": true,
+      "duplicate_receipt": true,
+      "page_preview": true,
+      "invalid_pdf_job_failed": true,
+      "running_cancel": true,
+      "retry": true,
+      "partial_failure_download_and_appendix": true,
+      "history_settings_and_download_survive_restart": true
+    },
+    "browser": {
+      "actual_upload_and_translation": true,
+      "png_preview": true,
+      "decoded_previews_have_content": true,
+      "reload_recovery": true,
+      "mobile_no_overflow": true,
+      "javascript_errors": [],
+      "partial_failure_download_and_reload": true,
+      "human_review_draft_error_retry_and_reload": true,
+      "human_review_failed_placement_keeps_original": true,
+      "human_review_original_decision_new_history_and_pdf": true,
+      "server_history_without_browser_storage": true,
+      "history_search_filter_download_reopen": true,
+      "retention_settings_saved_from_ui": true,
+      "nonlocal_plain_http_upload": true,
+      "both_pdf_downloads_without_output_selection": true,
+      "backend_refresh_pending_error_empty_and_recovery": true,
+      "disabled_backend_setup_link_reason_config_and_docker_help": true,
+      "setup_deep_link_reload_and_empty_configuration_recovery": true,
+      "setup_copy_on_plain_http_and_ready_backend_return": true,
+      "backend_settings_save_error_retry_and_masked_reload": true,
+      "model_download_progress_cancel_error_retry_and_reload_ui_fixture": true,
+      "upload_preparation_error_visible_and_retryable": true
+    }
+  },
+  "model_download_validation": {
+    "official_gguf_revision": "3a0eca6ce931d88d00614d427ab3ed8ff0743902",
+    "official_hf_revision": "9bc08445315723eb9b77d1b93505915eb03c3f01",
+    "real_official_assets_downloaded_and_verified": [
+      {
+        "file": "README.md",
+        "bytes": 6723,
+        "repository": "IndexTeam/Index-Translate-2B-GGUF"
+      },
+      {
+        "file": "config.json",
+        "bytes": 2908,
+        "repository": "IndexTeam/Index-Translate-2B"
+      }
+    ],
+    "range_resume_byte_fixture": true,
+    "range_ignored_restarts_cleanly": true,
+    "checksum_failure_preserves_existing_model": true,
+    "api_background_fixture_download_completed_and_restored": true,
+    "cancel_retry_and_cross_process_lock_tested": true,
+    "full_index_weights_downloaded_in_validation": false,
+    "native_index_inference_tested": false
+  },
+  "configuration_validation": {
+    "readonly_yaml_unchanged": true,
+    "overlay_file_mode": "0600",
+    "secret_values_masked": true,
+    "secret_preserved_and_explicitly_cleared": true,
+    "revision_conflicts_rejected": true,
+    "cli_and_api_share_settings": true,
+    "index_optional_bearer_auth": true,
+    "default_backend_updated_in_browser": true
+  }
+}

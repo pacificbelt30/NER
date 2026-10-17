@@ -8,7 +8,7 @@
 - 原文と訳文のプレビュー、原文と訳文を交互に並べた比較用PDFの作成。
 - 翻訳履歴の検索、結果の再表示、PDFの再ダウンロード。保存期間は既定で無期限。
 - 1アカウントのログインと、画面からの保存期間設定。
-- 翻訳方式ごとの準備手順・設定例と、未設定の理由をWeb UIで確認。
+- Web UIから翻訳APIの接続先・認証情報を保存し、Indexのモデルをダウンロード。
 - 一部の翻訳や配置に失敗しても、原文を残した「注意付きPDF」を出力。
 - 注意箇所を後から確認し、原文・候補の採用や手修正を選んで修正版PDFを作成。
 
@@ -63,7 +63,7 @@ docker compose up -d
 
 ## コマンドラインで使う
 
-CLIにはサーバの起動やログインは不要です。翻訳には `config.yml` を使います。
+CLIにはサーバの起動やログインは不要です。翻訳には `config.yml` と、画面・CLIで保存した共有設定を使います。
 
 ```sh
 uv run --locked python launcher.py info paper.pdf       # ページ数・翻訳対象ブロック数の確認
@@ -71,6 +71,18 @@ uv run --locked python launcher.py translate paper.pdf  # paper_new.pdf を作�
 uv run --locked python launcher.py combine paper.pdf    # paper_all.pdf を作成
 uv run --locked python launcher.py help
 ```
+
+モデル取得と接続設定もCLIから実行できます。
+
+```sh
+uv run --locked python launcher.py dl index                 # Index GGUF Q4_K_M
+uv run --locked python launcher.py dl index --format hf     # 標準モデル一式
+uv run --locked python launcher.py dl bergamot              # Bergamot英日モデル
+uv run --locked python launcher.py config set index --base-url http://model.example.com:8001/v1
+uv run --locked python launcher.py config show index        # 秘密情報は非表示
+```
+
+Web UIとCLIは同じ保存先の設定を共有します。取得したIndexを使うには、別途モデルサーバーを起動して接続先を設定します。形式、保存先、APIキー、Dockerの使い方は[モデル取得と接続設定](docs/model-management.md)を参照してください。
 
 出力先は入力PDFと同じディレクトリです。`combine` は作成済みの `paper_new.pdf` と原文を組み合わせます。`info` と `combine` に翻訳エンジンの設定は不要です。
 
@@ -83,6 +95,7 @@ uv run --locked python launcher.py help
 | ドキュメント全体の案内 | [docsの目次](docs/README.md) |
 | 翻訳エンジン、フォント、再試行などの設定 | [翻訳設定](docs/configuration.md) |
 | Index・Bergamotの導入とモデルの準備 | [ローカル翻訳](docs/local-translation.md) |
+| 画面・CLIからモデルを取得し、API設定を保存 | [モデル取得と接続設定](docs/model-management.md) |
 | ログイン、履歴、保存期間、サーバ運用 | [サーバとWeb UI](docs/server.md) |
 | 注意箇所の採用判断、URL・本文の手修正 | [注意箇所の確認と手修正](docs/human-review.md) |
 | Docker・Compose、永続化、リモート配置 | [Docker運用](docs/docker.md) |

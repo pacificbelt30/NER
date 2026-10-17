@@ -421,8 +421,10 @@
             <button class="secondary-button" id="setup-refresh" type="button">翻訳方式の設定を再確認</button>
           </div>
           <p>使いたい方式を開くと、必要なもの・準備手順・設定例を確認できます。</p>
-          <p class="field-note">翻訳エンジンの設定は、NERを動かしているサーバーの <code>config.yml</code>（<code>NER_CONFIG_PATH</code> 指定時はそのファイル）を編集します。この画面は手順の案内と設定状況の確認です。</p>
-          <p class="field-note">設定例は既存の同名セクションを置き換えて使ってください。既定の方式も変える場合は <code>PRIORITY</code> を変更します。通常は保存後の再確認で反映します。Dockerで設定ファイルの差し替え・マウント変更をした場合はコンテナも再起動してください。</p>
+          <p class="field-note">各方式の「接続・モデル設定」からAPI接続先・認証情報を保存できます。Indexのモデルもここから取得できます。取得先はNERサーバーです。</p>
+          <p class="field-note">画面で保存した設定はサーバーのデータ保存先に永続化し、<code>config.yml</code> より優先します。Dockerの読み取り専用設定ファイルでも利用できます。変更は次に開始する翻訳から適用します。</p>
+          <button id="backend-config-reload" class="text-button" type="button">保存済み設定を読み直す</button>
+          <p id="backend-config-message" class="field-note" role="status"></p>
           <p id="config-file-status" class="field-note"></p>
           <p id="setup-status" class="field-note" role="status" aria-live="polite" aria-atomic="true"></p>
           <p class="field-note">「設定済み」は設定の形式を確認した状態です。接続先の稼働・認証・モデル推論は、実際に翻訳するまで未確認です。</p>

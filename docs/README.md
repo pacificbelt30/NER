@@ -6,6 +6,7 @@
 | --- | --- |
 | 翻訳方式と各設定値を調べる | [翻訳設定](configuration.md) |
 | Index・Bergamotをローカルで動かす | [ローカル翻訳](local-translation.md) |
+| 画面・CLIからモデル取得とAPI設定を行う | [モデル取得と接続設定](model-management.md) |
 | ログイン、履歴、保存先を管理する | [サーバとWeb UI](server.md) |
 | 注意箇所を確認し、URL・本文を手修正する | [注意箇所の確認と手修正](human-review.md) |
 | Dockerで配置・運用する | [Docker運用](docker.md) |
