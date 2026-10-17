@@ -2,6 +2,14 @@ import { $, request } from "./api.js";
 
 export function createSettings() {
   let loaded = false;
+  let loading = false;
+  let saving = false;
+  function controls() {
+    $("settings-save").disabled = !loaded || loading || saving;
+    $("settings-refresh").disabled = loading || saving;
+    $("retention-mode").disabled = !loaded || loading || saving;
+    toggleDays();
+  }
   function retentionNote(settings) {
     $("history-retention").textContent = settings.retention_days == null
       ? "新しい翻訳は無期限に保存します。保存したPDFをここから取り出せます。"
@@ -12,10 +20,12 @@ export function createSettings() {
   }
   function toggleDays() {
     $("retention-days-field").hidden = $("retention-mode").value !== "days";
-    $("retention-days").disabled = $("retention-mode").value !== "days";
+    $("retention-days").disabled = !loaded || loading || saving || $("retention-mode").value !== "days";
   }
   async function load() {
-    $("settings-save").disabled = true;
+    if (loading || saving) return;
+    loading = true;
+    controls();
     $("settings-message").textContent = "設定を読み込んでいます…";
     try {
       retentionNote(await request("/api/settings"));
@@ -25,15 +35,17 @@ export function createSettings() {
       loaded = false;
       $("settings-message").textContent = error.message;
     } finally {
-      $("settings-save").disabled = !loaded;
+      loading = false;
+      controls();
     }
   }
   $("retention-mode").addEventListener("change", toggleDays);
   $("settings-refresh").addEventListener("click", () => void load());
   $("settings-form").addEventListener("submit", async event => {
     event.preventDefault();
-    if (!loaded || !$("settings-form").reportValidity()) return;
-    $("settings-save").disabled = true;
+    if (!loaded || loading || saving || !$("settings-form").reportValidity()) return;
+    saving = true;
+    controls();
     $("settings-message").textContent = "保存しています…";
     try {
       const retention_days = $("retention-mode").value === "forever" ? null : Number($("retention-days").value);
@@ -45,7 +57,8 @@ export function createSettings() {
     } catch (error) {
       $("settings-message").textContent = error.message;
     } finally {
-      $("settings-save").disabled = false;
+      saving = false;
+      controls();
     }
   });
   return { load };
