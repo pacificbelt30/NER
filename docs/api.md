@@ -38,6 +38,18 @@
 | GET | `/api/settings` | 保存期間設定を取得 |
 | PUT | `/api/settings` | 保存期間設定を変更 |
 
+`GET /api/capabilities` は `Cache-Control: no-store` を付け、サーバー設定をその都度確認します。`configuration.loaded` で設定ファイルを読めたか確認でき、読めなかった場合も全方式の準備先を返します。各 `backends` の `setup` は次の診断情報です。
+
+| 項目 | 内容 |
+| --- | --- |
+| `code` | `CONFIGURED`、`MISSING_CONFIGURATION`、`CONFIGURATION_UNREADABLE`、`INVALID_SECTION`、`INVALID_FIELD`、`MODEL_CONFIG_NOT_FOUND`、`EXECUTABLE_NOT_FOUND`、`SAMPLE_CREDENTIALS`、`INVALID_CONFIGURATION` |
+| `message` | 状態と必要な対応の説明。生の例外や設定値は含めない |
+| `fields` | 確認する設定項目名。例：`INDEX.BASE_URL` |
+| `url` | Web UIの準備画面へのリンク。例：`#settings/INDEX` |
+| `verification` | `configuration_only`。稼働・認証・推論は未確認 |
+
+既存の `configured` は、設定ファイルと構成の確認を通った場合に `true` です。ネットワークへの疎通確認や推論を実行したことは意味しません。TexTraの既知のサンプル認証情報は `SAMPLE_CREDENTIALS` として選択できず、ジョブを直接送信した場合も `BACKEND_NOT_CONFIGURED` を返します。APIキー・秘密情報・接続先の設定値・サーバー内のパスは診断応答に含めません。
+
 ### 翻訳の受付
 
 `POST /api/jobs` はmultipartフォームを使います。

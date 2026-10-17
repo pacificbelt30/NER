@@ -35,6 +35,7 @@ from ner.io_utils import atomic_output
 from ner.jobs import JobExpired, JobManager, QueueFull
 from ner.pdf_warnings import PDFWarning
 from ner.auth import AuthStore, COOKIE_NAME, SESSION_SECONDS
+from ner.backend_setup import LABELS, backend_status, require_real_credentials
 from ner.review import (MANIFEST, DRAFT, load_manifest, load_review, render_review,
                         save_manifest, validate_decisions, write_json)
 
@@ -203,6 +204,7 @@ def selected_config(backend=None):
         config = config_load(CONFIG_PATH)
         chosen = backend or config.get('PRIORITY', 'GOOGLE')
         config = {**config, 'PRIORITY': chosen}
+        require_real_credentials(config, chosen)
         with TranslationService(config):
             pass
         return config
@@ -213,25 +215,19 @@ def selected_config(backend=None):
 
 @app.get('/api/capabilities')
 async def capabilities():
+    loaded = True
     try:
         config = config_load(CONFIG_PATH)
     except ConfigurationError:
+        loaded = False
         config = {}
-    labels = {'INDEX': 'Index 2B', 'BERGAMOT': 'Firefox / Bergamot', 'GOOGLE': 'Google翻訳', 'TEXTRA': 'TexTra'}
-    backends = []
-    for name, label in labels.items():
-        configured = name in config or config.get('PRIORITY') == name
-        if configured:
-            try:
-                with TranslationService({**config, 'PRIORITY': name}):
-                    pass
-            except (ConfigurationError, FileNotFoundError):
-                configured = False
-        backends.append({'id': name, 'label': label, 'local': name in ('INDEX', 'BERGAMOT'),
-                         'configured': configured})
-    return {'source_language': 'en', 'target_language': 'ja', 'max_upload_bytes': MAX_UPLOAD_BYTES,
+    backends = [backend_status(config, name, config_loaded=loaded) for name in LABELS]
+    return JSONResponse({'source_language': 'en', 'target_language': 'ja', 'max_upload_bytes': MAX_UPLOAD_BYTES,
             'result_retention_seconds': app.state.jobs.retention, 'backends': backends,
-            'default_backend': config.get('PRIORITY')}
+            'default_backend': config.get('PRIORITY'),
+            'configuration': {'loaded': loaded, 'message': 'NERの設定ファイルを読み込みました。' if loaded else
+                              'NERの設定ファイルを読み込めません。サーバーのconfig.ymlまたはNER_CONFIG_PATHの指定を確認してください。'}},
+            headers={'Cache-Control': 'no-store'})
 
 
 def translation_job_worker(workspace, config, output):
