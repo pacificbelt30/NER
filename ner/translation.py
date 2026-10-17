@@ -4,7 +4,7 @@ from collections import OrderedDict
 from dataclasses import replace
 import time
 
-from .errors import ConfigurationError, RetryableTranslationError, TranslationError
+from .errors import ConfigurationError, ProtectedContentError, RetryableTranslationError, TranslationError
 from .http_translators import GoogleTranslator, TextraTranslator, checked_text
 from .local_translators import IndexTranslator, BergamotTranslator
 from .validation import number, section
@@ -89,7 +89,16 @@ class TranslationService:
                 translated = self._request(model_text(chunk.text), protected_tokens=aliases,
                                            context=context, kind=block.kind)
                 canonical = canonical_text(translated) if prepared.spans else translated
-                validate_tokens(canonical, chunk.tokens, chunk.text)
+                try:
+                    validate_tokens(canonical, chunk.tokens, chunk.text)
+                except TranslationError as exc:
+                    literals = {span.token: span.original for span in prepared.spans}
+                    candidate = TOKEN.sub(lambda match: literals.get(match.group(), match.group()),
+                                          ''.join(parts) + chunk.leading + canonical + chunk.trailing)
+                    raise ProtectedContentError(f'Block {block.id}, chunk {index + 1}/{len(chunks)}: {exc}', candidate,
+                                                complete=index == len(chunks) - 1) from exc
+            except ProtectedContentError:
+                raise
             except TranslationError as exc:
                 raise TranslationError(f'Block {block.id}, chunk {index + 1}/{len(chunks)}: {exc}') from exc
             parts.extend((chunk.leading, canonical, chunk.trailing))

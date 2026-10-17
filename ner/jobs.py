@@ -120,7 +120,8 @@ class JobManager:
         if self.closing or sum(job['status'] in ACTIVE for job in self.jobs.values()) >= self.capacity:
             raise QueueFull('Translation queue is full.')
 
-    def submit(self, workspace, filename, backend, output, config, submission_key=None):
+    def submit(self, workspace, filename, backend, output, config, submission_key=None,
+               *, kind='translation', parent_id=None, review_revision=None):
         self.check_capacity()
         job_id = Path(workspace).name
         now = time.time()
@@ -130,6 +131,7 @@ class JobManager:
             'expires_at': None, 'error': None,
             'warnings': [], 'result_summary': None,
             'submission_key': submission_key,
+            'kind': kind, 'parent_id': parent_id, 'review_revision': review_revision,
         }
         self._save(job)
         self.jobs[job_id] = job
@@ -220,6 +222,7 @@ class JobManager:
             'queue_position': queued.index(job_id) + 1 if job_id in queued else None,
             'progress': progress, 'downloads': downloads,
             'warnings': job.get('warnings', []), 'result_summary': job.get('result_summary'),
+            'kind': job.get('kind', 'translation'), 'parent_id': job.get('parent_id'),
         }
 
     def cancel(self, job_id):

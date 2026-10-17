@@ -2,7 +2,7 @@
 
 import pymupdf as fitz
 
-from .errors import ConfigurationError, PDFError, TranslationCancelled, TranslationError
+from .errors import ConfigurationError, PDFError, ProtectedContentError, TranslationCancelled, TranslationError
 from .paper_extract import PaperExtract
 from .translation import TranslationService
 from .yml_load import config_load
@@ -11,7 +11,7 @@ from .pdf_warnings import PDFWarning, append_warning_report
 
 
 class TextraConnection:
-    def __init__(self, path, priority='GOOGLE', *, config=None, error_policy=None):
+    def __init__(self, path, priority='GOOGLE', *, config=None, error_policy=None, render_only=False):
         self.warnings = []
         self.result_summary = None
         startup_error = None
@@ -28,7 +28,7 @@ class TextraConnection:
             raise ConfigurationError('ERROR_POLICY must be preserve or strict.')
         self.service = None
         self.priority = self.config.get('PRIORITY', priority)
-        if startup_error is None:
+        if startup_error is None and not render_only:
             try:
                 self.service = TranslationService(self.config, priority)
             except (ConfigurationError, TranslationError, OSError) as exc:
@@ -58,6 +58,7 @@ class TextraConnection:
             raise
         self.page_array = None
         self.block_results = None
+        self.rejected_candidates = {}
 
     def _post_block(self, txt, sleeptime=None):
         # Retain the old entry point; backend configuration now controls pacing.
@@ -87,6 +88,7 @@ class TextraConnection:
     def post_page(self, on_progress=None, on_chunk_progress=None):
         self.page_array = None
         self.block_results = None
+        self.rejected_candidates = {}
         self.pe._require_extracted()
         if not any(self.pe.pages_info) and not self.pe.has_selectable_text:
             if self.error_policy == 'strict':
@@ -132,6 +134,10 @@ class TextraConnection:
                         ) from exc
                     code = ('PROTECTED_CONTENT_INVALID' if 'Protected token mismatch' in str(exc)
                             else 'TRANSLATION_FAILED')
+                    if isinstance(exc, ProtectedContentError):
+                        self.rejected_candidates[block['id']] = {
+                            'text': exc.candidate, 'complete': exc.complete,
+                        }
                     self.warnings.append(PDFWarning(code, 'translation', page_num + 1, block['id'],
                                                     block.get('text_bbox', block['bbox']), block['txt']))
                     translated_blocks.append(None)

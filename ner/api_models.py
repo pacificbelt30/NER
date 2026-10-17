@@ -58,6 +58,8 @@ class JobView(BaseModel):
     downloads: dict[str, str] | None
     warnings: list[WarningView] = Field(default_factory=list)
     result_summary: ResultSummaryView | None = None
+    kind: Literal['translation', 'review'] = 'translation'
+    parent_id: str | None = None
 
 
 class JobListView(BaseModel):
@@ -70,3 +72,22 @@ class JobListView(BaseModel):
 class ServerSettings(BaseModel):
     model_config = {'extra': 'forbid'}
     retention_days: int | None = Field(..., ge=1, le=3650, strict=True)
+
+
+class ReviewDecision(BaseModel):
+    model_config = {'extra': 'forbid'}
+    id: str = Field(min_length=1, max_length=128)
+    action: Literal['pending', 'original', 'adopt', 'edit']
+    text: str | None = Field(None, max_length=20000)
+
+
+class ReviewDraft(BaseModel):
+    model_config = {'extra': 'forbid'}
+    revision: int = Field(ge=0, strict=True)
+    decisions: list[ReviewDecision] = Field(max_length=10000)
+
+
+class ReviewSubmission(BaseModel):
+    model_config = {'extra': 'forbid'}
+    revision: int = Field(ge=0, strict=True)
+    submission_key: str = Field(min_length=1, max_length=64, pattern=r'^[A-Za-z0-9_-]+$')

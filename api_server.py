@@ -28,12 +28,15 @@ from starlette.concurrency import run_in_threadpool
 import uvicorn
 
 from ner import CombinePDF, PaperExtract, TextraConnection, TranslationService, config_load
-from ner.api_models import Backend, JobListView, JobStatus, JobView, Output, ServerSettings
+from ner.api_models import (Backend, JobListView, JobStatus, JobView, Output, ServerSettings,
+                            ReviewDraft, ReviewSubmission)
 from ner.errors import ConfigurationError, PDFError, TranslationCancelled, TranslationError
 from ner.io_utils import atomic_output
 from ner.jobs import JobExpired, JobManager, QueueFull
 from ner.pdf_warnings import PDFWarning
 from ner.auth import AuthStore, COOKIE_NAME, SESSION_SECONDS
+from ner.review import (MANIFEST, DRAFT, load_manifest, load_review, render_review,
+                        save_manifest, validate_decisions, write_json)
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +56,7 @@ def new_pool():
 async def lifespan(app):
     app.state.auth = AuthStore(Path(base).resolve())
     app.state.pdf_pool = new_pool()
+    app.state.review_lock = asyncio.Lock()
     app.state.jobs = JobManager(Path(base).resolve() / 'jobs', run_translation_job)
     app.state.jobs.start()
     async def cleanup():
@@ -72,7 +76,7 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=['*'], allow_credentials=False,
-    allow_methods=['GET', 'POST', 'OPTIONS'], allow_headers=['*'],
+    allow_methods=['GET', 'POST', 'PUT', 'OPTIONS'], allow_headers=['*'],
     expose_headers=['Location', 'Retry-After', 'Content-Disposition'],
 )
 
@@ -255,13 +259,21 @@ def translation_job_worker(workspace, config, output):
         state.update(block_id=block_id, completed_chunks=completed, total_chunks=total)
         report('translating', completed == 0 or completed == total)
     report('extracting')
-    with TextraConnection(workspace / 'input.pdf', config=config) as job:
-        job.get_pdf_info()
-        job.post_page(on_progress=progress, on_chunk_progress=chunk_progress)
+    if (workspace / 'review-request').exists():
         report('saving')
-        translated = job.insert(check_cancel=check_cancel)
-        result = {'result_summary': job.result_summary,
-                  'warnings': [warning.view() for warning in job.warnings]}
+        translated, result = render_review(workspace, check_cancel)
+        summary = result['result_summary']
+        state.update(completed_blocks=summary['total_blocks'], total_blocks=summary['total_blocks'],
+                     page=summary['source_pages'], pages=summary['source_pages'])
+    else:
+        with TextraConnection(workspace / 'input.pdf', config=config) as job:
+            job.get_pdf_info()
+            job.post_page(on_progress=progress, on_chunk_progress=chunk_progress)
+            report('saving')
+            translated = job.insert(check_cancel=check_cancel)
+            save_manifest(job, workspace)
+            result = {'result_summary': job.result_summary,
+                      'warnings': [warning.view() for warning in job.warnings]}
     if output == 'comparison':
         report('combining')
         try:
@@ -364,7 +376,7 @@ async def create_job(file: UploadFile, backend: Annotated[Backend | None, Form()
         manager = app.state.jobs
         existing = manager.by_key(submission_key) if submission_key else None
         if existing:
-            if existing['filename'] != PureWindowsPath(file.filename or '').name or existing['output'] != output or (backend and existing['backend'] != backend):
+            if existing.get('kind') == 'review' or existing['filename'] != PureWindowsPath(file.filename or '').name or existing['output'] != output or (backend and existing['backend'] != backend):
                 raise api_error(409, 'IDEMPOTENCY_CONFLICT', 'この受付キーは別の翻訳に使われています。')
             return JSONResponse(manager.describe(existing['id']), status_code=202,
                                 headers={'Location': f"/api/jobs/{existing['id']}", 'Retry-After': '1'})
@@ -374,7 +386,7 @@ async def create_job(file: UploadFile, backend: Annotated[Backend | None, Form()
         # Two simultaneous retries of an upload must create only one job.
         existing = manager.by_key(submission_key) if submission_key else None
         if existing:
-            if existing['filename'] != filename or existing['backend'] != config['PRIORITY'] or existing['output'] != output:
+            if existing.get('kind') == 'review' or existing['filename'] != filename or existing['backend'] != config['PRIORITY'] or existing['output'] != output:
                 raise api_error(409, 'IDEMPOTENCY_CONFLICT', 'この受付キーは別の翻訳に使われています。')
             result = manager.describe(existing['id'])
         else:
@@ -427,13 +439,19 @@ async def retry_job(job_id: str, backend: Annotated[Backend | None, Form()] = No
     job = get_job(job_id)
     if job['status'] not in ('failed', 'cancelled'):
         raise api_error(409, 'JOB_NOT_RETRYABLE', '再試行できるのは失敗または停止した翻訳です。')
-    config = selected_config(backend or job['backend'])
+    is_review = job.get('kind') == 'review'
+    config = {} if is_review else selected_config(backend or job['backend'])
     workspace = None
     accepted = False
     try:
         workspace = app.state.jobs.new_workspace()
         await run_in_threadpool(shutil.copyfile, app.state.jobs.root / job_id / 'input.pdf', workspace / 'input.pdf')
-        result = app.state.jobs.submit(workspace, job['filename'], config['PRIORITY'], output or job['output'], config)
+        if is_review:
+            for name in (MANIFEST, DRAFT, 'review-request'):
+                await run_in_threadpool(shutil.copyfile, app.state.jobs.root / job_id / name, workspace / name)
+        result = app.state.jobs.submit(workspace, job['filename'], job['backend'] if is_review else config['PRIORITY'],
+                                      output or job['output'], config, kind='review' if is_review else 'translation',
+                                      parent_id=job_id)
         accepted = True
         return JSONResponse(result, status_code=202, headers={'Location': f"/api/jobs/{result['id']}"})
     except QueueFull as exc:
@@ -441,6 +459,117 @@ async def retry_job(job_id: str, backend: Annotated[Backend | None, Form()] = No
     finally:
         if workspace and not accepted:
             await run_in_threadpool(shutil.rmtree, workspace, ignore_errors=True)
+
+
+def review_workspace(job_id):
+    job = get_job(job_id)
+    if job['status'] != 'succeeded':
+        raise api_error(409, 'RESULT_NOT_READY', '翻訳が完了してから注意箇所を確認してください。')
+    return app.state.jobs.root / job_id
+
+
+def read_review(workspace):
+    try:
+        return load_review(workspace)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise api_error(500, 'REVIEW_UNAVAILABLE', '編集用データを読み込めませんでした。原本のPDFは履歴から保存できます。', True) from exc
+
+
+@app.get('/api/jobs/{job_id}/review')
+async def get_review(job_id: str):
+    workspace = review_workspace(job_id)
+    if not (workspace / MANIFEST).exists():
+        return JSONResponse({'available': False, 'revision': 0, 'items': [],
+            'message': 'この履歴には編集用データがありません。原本を再翻訳すると、注意箇所を確認・編集できる新しい履歴を作成します。'},
+            headers={'Cache-Control': 'no-store'})
+    return JSONResponse(await run_in_threadpool(read_review, workspace), headers={'Cache-Control': 'no-store'})
+
+
+@app.put('/api/jobs/{job_id}/review')
+async def save_review(job_id: str, draft: ReviewDraft):
+    workspace = review_workspace(job_id)
+    async with app.state.review_lock:
+        current = await run_in_threadpool(read_review, workspace)
+        if current['revision'] != draft.revision:
+            raise api_error(409, 'REVIEW_CONFLICT', '別の画面で確認内容が更新されました。下書きを読み直してから編集してください。')
+        decisions = [item.model_dump() for item in draft.decisions]
+        try:
+            data = await run_in_threadpool(load_manifest, workspace)
+            validate_decisions(data, decisions)
+            await run_in_threadpool(write_json, workspace / DRAFT,
+                                    {'revision': draft.revision + 1, 'decisions': decisions})
+            saved = await run_in_threadpool(read_review, workspace)
+        except ValueError as exc:
+            raise api_error(422, 'INVALID_REVIEW', str(exc)) from exc
+        except OSError as exc:
+            raise api_error(500, 'REVIEW_SAVE_FAILED', '下書きを保存できませんでした。入力を残したまま再試行してください。', True) from exc
+    return JSONResponse(saved, headers={'Cache-Control': 'no-store'})
+
+
+@app.post('/api/jobs/{job_id}/review', status_code=202, response_model=JobView)
+async def create_review(job_id: str, submission: ReviewSubmission):
+    workspace = review_workspace(job_id)
+    manager = app.state.jobs
+    parent = get_job(job_id)
+    child = None
+    accepted = False
+    try:
+        async with app.state.review_lock:
+            existing = manager.by_key(submission.submission_key)
+            if existing:
+                if (existing.get('parent_id') != job_id or existing.get('kind') != 'review'
+                        or existing.get('review_revision') != submission.revision):
+                    raise api_error(409, 'IDEMPOTENCY_CONFLICT', 'この受付キーは別の確認内容に使われています。')
+                return JSONResponse(manager.describe(existing['id']), status_code=202,
+                                    headers={'Location': f"/api/jobs/{existing['id']}"})
+            current = await run_in_threadpool(read_review, workspace)
+            if current['revision'] != submission.revision:
+                raise api_error(409, 'REVIEW_CONFLICT', '確認内容が更新されています。下書きを読み直してください。')
+            decisions = [item['decision'] for item in current['items'] if item['editable']]
+            if not any(item['action'] != 'pending' for item in decisions):
+                raise api_error(422, 'REVIEW_EMPTY', '少なくとも1箇所の採用方針を選んでください。')
+            child = manager.new_workspace()
+            for name in ('input.pdf', MANIFEST):
+                await run_in_threadpool(shutil.copyfile, workspace / name, child / name)
+            await run_in_threadpool(write_json, child / DRAFT, {'revision': 0, 'decisions': decisions})
+            (child / 'review-request').touch()
+            result = manager.submit(child, parent['filename'], parent['backend'], 'comparison', {},
+                                    submission.submission_key, kind='review', parent_id=job_id,
+                                    review_revision=submission.revision)
+            accepted = True
+        return JSONResponse(result, status_code=202, headers={'Location': f"/api/jobs/{result['id']}"})
+    except QueueFull as exc:
+        raise api_error(429, 'QUEUE_FULL', '受付が混み合っています。少し待って再試行してください。', True) from exc
+    except OSError as exc:
+        raise api_error(500, 'REVIEW_SAVE_FAILED', '修正版の作成を受け付けられませんでした。下書きは保存されています。', True) from exc
+    finally:
+        if child and not accepted:
+            await run_in_threadpool(shutil.rmtree, child, ignore_errors=True)
+
+
+@app.post('/api/jobs/{job_id}/review/prepare', status_code=202, response_model=JobView)
+async def prepare_review(job_id: str, backend: Annotated[Backend | None, Form()] = None):
+    workspace = review_workspace(job_id)
+    if (workspace / MANIFEST).exists():
+        raise api_error(409, 'REVIEW_ALREADY_AVAILABLE', 'この履歴はそのまま編集できます。注意箇所を読み直してください。')
+    parent = get_job(job_id)
+    config = selected_config(backend or parent['backend'])
+    child = None
+    accepted = False
+    try:
+        child = app.state.jobs.new_workspace()
+        await run_in_threadpool(shutil.copyfile, workspace / 'input.pdf', child / 'input.pdf')
+        result = app.state.jobs.submit(child, parent['filename'], config['PRIORITY'], 'comparison', config,
+                                       parent_id=job_id)
+        accepted = True
+        return JSONResponse(result, status_code=202, headers={'Location': f"/api/jobs/{result['id']}"})
+    except QueueFull as exc:
+        raise api_error(429, 'QUEUE_FULL', '受付が混み合っています。少し待って再試行してください。', True) from exc
+    except OSError as exc:
+        raise api_error(500, 'REVIEW_SAVE_FAILED', '編集用データの作成を受け付けられませんでした。', True) from exc
+    finally:
+        if child and not accepted:
+            await run_in_threadpool(shutil.rmtree, child, ignore_errors=True)
 
 
 @app.get('/api/jobs/{job_id}/files/{kind}')
