@@ -1,0 +1,26 @@
+services:
+  ner:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "${NER_BIND_ADDRESS:-0.0.0.0}:${NER_PORT:-8000}:8000"
+    environment:
+      NER_COOKIE_SECURE: "${NER_COOKIE_SECURE:-0}"
+      FORWARDED_ALLOW_IPS: "${FORWARDED_ALLOW_IPS:-127.0.0.1}"
+    volumes:
+      - ner-data:/data
+      - type: bind
+        source: ./config.yml
+        target: /app/config.yml
+        read_only: true
+        bind:
+          create_host_path: false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+volumes:
+  ner-data:

@@ -14,12 +14,12 @@
 
 ## はじめる
 
-Python 3.11とPipenvを用意し、リポジトリのルートで実行します。
+Python 3.11と[uv](https://docs.astral.sh/uv/getting-started/installation/)を用意し、リポジトリのルートで実行します。
 
 ### 1. インストールと翻訳設定
 
 ```sh
-pipenv install
+uv sync --locked
 cp config_sample.yml config.yml
 ```
 
@@ -37,25 +37,37 @@ cp config_sample.yml config.yml
 ### 2. ログインアカウントの作成と起動
 
 ```sh
-pipenv run python -m ner.auth setup
-pipenv run python api_server.py
+uv run --locked python -m ner.auth setup
+uv run --locked python api_server.py
 ```
 
-初回設定ではユーザー名とパスワードを対話形式で入力します。ブラウザで <http://127.0.0.1:8000/> を開き、作成したアカウントでログインしてください。
+初回設定ではユーザー名とパスワードを対話形式で入力します。ブラウザで `http://<配置先ホストの名前またはIP>:8000/` を開き、作成したアカウントでログインしてください。同じPCで使う場合は `http://localhost:8000/` です。待受アドレス・ポートは `--host`・`--port` で変更できます。
 
 「新しく翻訳」でPDFを選択し、翻訳方式を選んで開始します。完了したPDFはダウンロードでき、「翻訳履歴」からも開き直せます。「設定」では、今後完了する翻訳の保存期間を変更できます。
 
 ログイン・保存先・サーバ運用の詳細は[サーバとWeb UI](docs/server.md)、APIの利用方法は[API仕様](docs/api.md)を参照してください。
+
+## Dockerで使う
+
+Docker EngineとComposeを用意し、`config.yml` を作成・編集してから実行します。
+
+```sh
+docker compose build
+docker compose run --rm ner python -m ner.auth setup
+docker compose up -d
+```
+
+接続先は `http://<配置先ホストの名前またはIP>:8000/` です。履歴・PDF・ログイン情報は名前付きボリュームへ保存します。公開ポートの変更、リモートモデルへの接続、Bergamot用イメージは[Docker運用](docs/docker.md)を参照してください。
 
 ## コマンドラインで使う
 
 CLIにはサーバの起動やログインは不要です。翻訳には `config.yml` を使います。
 
 ```sh
-pipenv run python launcher.py info paper.pdf       # ページ数・翻訳対象ブロック数の確認
-pipenv run python launcher.py translate paper.pdf  # paper_new.pdf を作成
-pipenv run python launcher.py combine paper.pdf    # paper_all.pdf を作成
-pipenv run python launcher.py help
+uv run --locked python launcher.py info paper.pdf       # ページ数・翻訳対象ブロック数の確認
+uv run --locked python launcher.py translate paper.pdf  # paper_new.pdf を作成
+uv run --locked python launcher.py combine paper.pdf    # paper_all.pdf を作成
+uv run --locked python launcher.py help
 ```
 
 出力先は入力PDFと同じディレクトリです。`combine` は作成済みの `paper_new.pdf` と原文を組み合わせます。`info` と `combine` に翻訳エンジンの設定は不要です。
@@ -70,6 +82,7 @@ pipenv run python launcher.py help
 | 翻訳エンジン、フォント、再試行などの設定 | [翻訳設定](docs/configuration.md) |
 | Index・Bergamotの導入とモデルの準備 | [ローカル翻訳](docs/local-translation.md) |
 | ログイン、履歴、保存期間、サーバ運用 | [サーバとWeb UI](docs/server.md) |
+| Docker・Compose、永続化、リモート配置 | [Docker運用](docs/docker.md) |
 | 認証、ジョブ、ダウンロード、旧API | [API仕様](docs/api.md) |
 | 翻訳対象の判定、表、レイアウト、エラー時の出力 | [PDF処理とエラー方針](docs/pdf-layout.md) |
 | ソース構成、テスト、検証コマンド | [開発と検証](docs/development.md) |

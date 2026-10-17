@@ -1,0 +1,11 @@
+services:
+  ner:
+    build:
+      target: bergamot
+    volumes:
+      - type: bind
+        source: ./models
+        target: /models
+        read_only: true
+        bind:
+          create_host_path: false

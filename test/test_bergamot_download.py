@@ -1,5 +1,6 @@
 import gzip
 import hashlib
+import stat
 
 import pytest
 import yaml
@@ -52,6 +53,7 @@ def test_download_decompresses_and_verifies_published_model(tmp_path):
     }
     name = download_file(Session(content=gzip.compress(model)), 'https://example.com', resource, tmp_path)
     assert (tmp_path / name).read_bytes() == model
+    assert (tmp_path / name).stat().st_mode & stat.S_IROTH
     assert list(tmp_path.iterdir()) == [tmp_path / name]
 
 

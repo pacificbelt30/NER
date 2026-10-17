@@ -7,16 +7,18 @@
 Python 3.11を使います。
 
 ```sh
-pipenv install --dev
-pipenv run python -m pytest test -q
+uv sync --locked
+uv run --locked python -m pytest test -q
 ```
 
 通常のテストではオンライン翻訳の認証情報や実モデルは不要です。実モデルの受け入れ試験は別に実行します。
 
+依存定義は [pyproject.toml](../pyproject.toml)、固定した解決結果は [uv.lock](../uv.lock) で管理します。`uv sync --locked` はロックと定義の不一致を検出します。依存変更時は `uv add` / `uv remove` または定義の編集後に `uv lock` を使い、ロックファイルもコミットしてください。実行時だけの環境は `uv sync --locked --no-dev`、通常の開発環境には `dev` グループが入ります。`browser`・`benchmark` は明示した場合だけ追加されます。既存の仮想環境も `uv sync --locked` で同期できます。
+
 PDF処理はNLTKのトークナイザデータを必要としません。`PaperExtract` のテキスト抽出ヘルパーを `is_split=True` で呼ぶ場合だけ、次のデータを準備します。
 
 ```sh
-pipenv run python -m nltk.downloader punkt punkt_tab
+uv run --locked python -m nltk.downloader punkt punkt_tab
 ```
 
 ## ソース構成
@@ -77,9 +79,9 @@ with TextraConnection('paper.pdf') as job:
 [ローカル翻訳](local-translation.md)に従ってBergamotワーカーとモデルを用意します。PlaywrightとChromiumも別途必要です。
 
 ```sh
-pipenv run python -m pip install playwright==1.63.0
-pipenv run python -m playwright install chromium
-pipenv run python scripts/verify_end_to_end.py \
+uv sync --locked --group browser
+uv run --locked --group browser python -m playwright install chromium
+uv run --locked --group browser python scripts/verify_end_to_end.py \
   --worker /path/to/ner-bergamot-worker \
   --model /path/to/model/config.yml \
   --output pdf/end-to-end
@@ -94,7 +96,7 @@ pipenv run python scripts/verify_end_to_end.py \
 モデルなしの構造復元実験です。
 
 ```sh
-pipenv run python scripts/audit_pdf_layout.py --output pdf/layout-audit
+uv run --locked python scripts/audit_pdf_layout.py --output pdf/layout-audit
 ```
 
 段組み、見出し、URL、コード、リスト、表、色付き背景、回転文字を含む2ページの検証PDFと、レポート・比較PDF・PNGを生成します。現在の実装を入力と同じ文で評価する経路と、人手で領域・役割・日本語訳を与えた実験用配置を区別しています。後者は自動文書理解の精度を示すものではありません。
@@ -102,10 +104,10 @@ pipenv run python scripts/audit_pdf_layout.py --output pdf/layout-audit
 実モデルを加える場合は次の指定を使います。
 
 ```sh
-pipenv run python scripts/audit_pdf_layout.py --output pdf/layout-audit/native \
+uv run --locked python scripts/audit_pdf_layout.py --output pdf/layout-audit/native \
   --bergamot-worker /path/to/ner-bergamot-worker \
   --bergamot-model /path/to/model/config.yml
-pipenv run python scripts/verify_block_translation.py --output pdf/block-audit \
+uv run --locked python scripts/verify_block_translation.py --output pdf/block-audit \
   --worker /path/to/ner-bergamot-worker \
   --model /path/to/model/config.yml
 ```
@@ -117,9 +119,9 @@ pipenv run python scripts/verify_block_translation.py --output pdf/block-audit \
 ## 表とPDFライブラリの比較
 
 ```sh
-pipenv run python scripts/evaluate_pdf_tables.py --output pdf/table-audit/ruled
-pipenv run python scripts/evaluate_pdf_tables.py --output pdf/table-audit/borderless --borderless
-pipenv run python scripts/evaluate_pdf_tables.py --output pdf/table-audit/native \
+uv run --locked python scripts/evaluate_pdf_tables.py --output pdf/table-audit/ruled
+uv run --locked python scripts/evaluate_pdf_tables.py --output pdf/table-audit/borderless --borderless
+uv run --locked python scripts/evaluate_pdf_tables.py --output pdf/table-audit/native \
   --worker /path/to/ner-bergamot-worker --model /path/to/model/config.yml
 ```
 
@@ -128,15 +130,34 @@ pipenv run python scripts/evaluate_pdf_tables.py --output pdf/table-audit/native
 PDFライブラリの比較には、本番では不要な追加パッケージを使います。
 
 ```sh
-pipenv run python -m pip install -r requirements-benchmark.txt
-pipenv run python scripts/benchmark_pdf_libraries.py \
+uv sync --locked --group benchmark
+uv run --locked --group benchmark python scripts/benchmark_pdf_libraries.py \
   --output pdf/library-benchmark --repeat 7
 ```
 
 比較条件、採用判断、数値の解釈は[性能・レイアウト評価](benchmarks.md)を参照してください。
 
+## Dockerの通し確認
+
+イメージをビルドしてから、隔離したコンテナ・ネットワーク・ボリュームで確認します。既存のアカウント・設定・PDF履歴は使いません。標準では別コンテナのIndex互換スタブを使い、モデルの翻訳品質は評価しません。
+
+```sh
+docker build --target runtime -t ner:local .
+uv run --locked python scripts/verify_docker.py --image ner:local --output pdf/docker-index
+```
+
+初回アカウント作成、非root起動、別コンテナへの翻訳接続、公開ホスト名とHTTPS転送ヘッダー、Origin検証、PDFとプレビューの取得、コンテナ再作成後のセッション・履歴・保存設定・PDF保持、ヘルスチェックを検証します。作成したリソースは終了時に削除します。
+
+Bergamotイメージと取得済みモデルでも同じ確認を行えます。
+
+```sh
+docker build --target bergamot -t ner:bergamot .
+uv run --locked python scripts/verify_docker.py --image ner:bergamot \
+  --model models/bergamot/en-ja/config.yml --output pdf/docker-bergamot
+```
+
 ## 結果の扱い
 
-[benchmarks/](../benchmarks/)のJSONは各変更時点の検証記録です。最新のログイン機能追加時の記録は267テストの通過を示しますが、過去の208・226・244件の記録は書き換えていません。現在のチェックアウトを検証する場合は上記のコマンドを実行してください。
+[benchmarks/](../benchmarks/)のJSONは各変更時点の検証記録です。uv・Docker導入時の[検証記録](../benchmarks/deployment_results.json)には285テストと実モデル・ブラウザ・Dockerの確認を保存しています。過去の208・226・244・267件の記録は書き換えていません。現在のチェックアウトを検証する場合は上記のコマンドを実行してください。
 
 検証PDF・PNGは `pdf/`、モデルは `models/`、サーバデータは `pdfstore/` に置く構成で、いずれもGit管理の対象外です。別プロジェクトの実装を参照する場合も、変更対象のリポジトリと検証用ファイルを区別してください。

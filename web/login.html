@@ -22,7 +22,7 @@
           <p id="login-error" class="form-error" role="alert" hidden></p>
           <button id="login-submit" class="primary-button" type="submit" disabled>ログインする</button>
         </form>
-        <p id="login-setup" class="setup-message" hidden>初回設定が必要です。サーバー上で <code>python -m ner.auth setup</code> を実行し、アカウントを作成してからサーバーを再起動してください。</p>
+        <p id="login-setup" class="setup-message" hidden>初回設定が必要です。サーバー上で <code>uv run --locked python -m ner.auth setup</code>（Dockerの場合は <code>docker compose run --rm ner python -m ner.auth setup</code>）を実行し、アカウントを作成してからサーバーを再起動してください。</p>
         <p id="login-status" class="muted" role="status">ログイン設定を確認しています…</p>
       </section>
     </main>

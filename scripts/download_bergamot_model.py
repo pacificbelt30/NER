@@ -42,6 +42,9 @@ def download_file(session, base_url, resource, destination):
                 digest = hashlib.file_digest(handle, 'sha256').hexdigest()
             if digest != resource['uncompressedHash']:
                 raise ValueError(f'Model checksum mismatch: {filename}')
+        # Published model assets must also be readable by the non-root Docker
+        # runtime, whose UID can differ from the user preparing the models.
+        unpacked.chmod(0o644)
         unpacked.replace(output)
         return output.name
     finally:

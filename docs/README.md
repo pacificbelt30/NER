@@ -7,6 +7,7 @@
 | 翻訳方式と各設定値を調べる | [翻訳設定](configuration.md) |
 | Index・Bergamotをローカルで動かす | [ローカル翻訳](local-translation.md) |
 | ログイン、履歴、保存先を管理する | [サーバとWeb UI](server.md) |
+| Dockerで配置・運用する | [Docker運用](docker.md) |
 | 別のアプリから翻訳を実行する | [API仕様](api.md) |
 | 翻訳対象、レイアウト復元、エラー処理を理解する | [PDF処理とエラー方針](pdf-layout.md) |
 | 開発環境を用意し、テストする | [開発と検証](development.md) |
