@@ -15,11 +15,7 @@ uv run --locked python -m pytest test -q
 
 依存定義は [pyproject.toml](../pyproject.toml)、固定した解決結果は [uv.lock](../uv.lock) で管理します。`uv sync --locked` はロックと定義の不一致を検出します。依存変更時は `uv add` / `uv remove` または定義の編集後に `uv lock` を使い、ロックファイルもコミットしてください。実行時だけの環境は `uv sync --locked --no-dev`、通常の開発環境には `dev` グループが入ります。`browser`・`benchmark` は明示した場合だけ追加されます。既存の仮想環境も `uv sync --locked` で同期できます。
 
-PDF処理はNLTKのトークナイザデータを必要としません。`PaperExtract` のテキスト抽出ヘルパーを `is_split=True` で呼ぶ場合だけ、次のデータを準備します。
-
-```sh
-uv run --locked python -m nltk.downloader punkt punkt_tab
-```
+NLTKや追加のトークナイザデータは不要です。`PaperExtract` のテキスト抽出ヘルパーは、`is_split=True` の場合に英語・日本語の句読点を使って文を改行で区切ります。URL・コード・小数・代表的な略語を保護する簡易処理で、従来のPunktとは曖昧な文境界の結果が異なる場合があります。実際のPDF翻訳では文単位ではなくブロック単位で処理します。NLTKはモデルの読み書きに関する脆弱性（[GHSA-8mgp-746c-j5xp](https://github.com/advisories/GHSA-8mgp-746c-j5xp)）のある依存を除くため削除しました。
 
 ## ソース構成
 

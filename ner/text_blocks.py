@@ -200,3 +200,32 @@ def validate_tokens(text, expected, source):
 def restore_text(text, spans):
     originals = {span.token: span.original for span in spans}
     return TOKEN.sub(lambda match: originals[match.group()], text)
+
+
+def split_sentences(text, protected_ranges=()):
+    """Split extracted English/Japanese prose without downloading tokenizer data.
+
+    This conservative heuristic keeps common abbreviations and initials together;
+    it is not a statistical tokenizer. PDF translation itself uses whole blocks.
+    """
+    prepared = prepare_block(TranslationBlock('', text, protected_ranges=tuple(protected_ranges)))
+    source = prepared.text
+    sentences, start = [], 0
+    abbreviations = {'mr', 'mrs', 'ms', 'dr', 'prof', 'jr', 'sr', 'st',
+                     'vs', 'etc', 'fig', 'figs', 'eq', 'eqs', 'no', 'vol', 'al', 'e.g', 'i.e'}
+    for match in re.finditer(r'[.!?]+[\"\'”’\)\]]*(?=\s|$)|[。！？]+[\"\'”’\)\]]*', source):
+        if match.group().startswith('.') and not match.group().startswith('..'):
+            word_start = match.start()
+            while word_start > start and (source[word_start - 1].isalnum() or source[word_start - 1] in '._'):
+                word_start -= 1
+            word = source[word_start:match.start()]
+            if (word.lower() in abbreviations or re.fullmatch(r'(?:[A-Za-z]\.)*[A-Za-z]', word)):
+                continue
+        sentence = source[start:match.end()].strip()
+        if sentence:
+            sentences.append(restore_text(sentence, prepared.spans))
+        start = match.end()
+    remainder = source[start:].strip()
+    if remainder:
+        sentences.append(restore_text(remainder, prepared.spans))
+    return sentences

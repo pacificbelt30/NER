@@ -2,7 +2,7 @@
 
 [ドキュメントの目次](README.md) · [翻訳設定](configuration.md)
 
-Index-Translate-2BとFirefox / Bergamotを使用できます。英語から日本語への翻訳が対象です。ローカル方式の利用にTexTraの認証情報やNLTKのトークナイザデータは不要です。
+Index-Translate-2BとFirefox / Bergamotを使用できます。英語から日本語への翻訳が対象です。ローカル方式の利用にTexTraの認証情報は不要です。
 
 以下はリポジトリで使用してきた構成例です。Indexの実モデルによる推論は受け入れ試験の対象にしていません。Bergamotは記載の固定リビジョンと英日モデルで検証しています。検証範囲は[性能・レイアウト評価](benchmarks.md)を参照してください。
 

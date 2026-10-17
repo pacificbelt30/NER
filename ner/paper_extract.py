@@ -10,7 +10,7 @@ import pymupdf as fitz
 
 from .errors import ConfigurationError, PDFError
 from .io_utils import atomic_output
-from .text_blocks import BlockTranslation, LiteralRange, TranslationBlock, prepare_block
+from .text_blocks import BlockTranslation, LiteralRange, TranslationBlock, prepare_block, split_sentences
 from .translation_policy import translation_decision
 from .block_layout import MIN_FONT_SIZE, PreparedPage, prepare_rich
 from .pdf_tables import separate_table_cells
@@ -253,11 +253,9 @@ class PaperExtract:
         texts = [block['txt'] for block in self.pages_info[page]]
         if not is_split:
             return texts
-        from nltk.tokenize import sent_tokenize
-        try:
-            return ['\n'.join(sent_tokenize(text)) + '\n' for text in texts]
-        except LookupError as exc:
-            raise PDFError('NLTK tokenizer data is missing; download punkt and punkt_tab.') from exc
+        return ['\n'.join(split_sentences(block['txt'],
+                    (LiteralRange(**span) for span in block.get('protected_ranges', ())))) + '\n'
+                for block in self.pages_info[page]]
 
     def get_all_text_array(self, is_split=True):
         self._require_extracted()
