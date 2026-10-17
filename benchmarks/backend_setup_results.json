@@ -1,0 +1,65 @@
+{
+  "unit_tests": {
+    "passed": 333,
+    "failed": 0
+  },
+  "end_to_end": {
+    "cli": {
+      "info_without_config": true,
+      "native_translation": true,
+      "alternating_comparison": true,
+      "missing_file_nonzero": true,
+      "source_unchanged": true,
+      "partial_failure_still_outputs_pdf": true
+    },
+    "auth": {
+      "unauthenticated_api_and_legacy_blocked": true,
+      "cookie_login": true,
+      "browser_login_error_and_success": true,
+      "login_preserves_history_destination": true,
+      "browser_logout_revokes_token": true,
+      "session_survives_server_restart": true
+    },
+    "http": {
+      "native_job_and_downloads": true,
+      "duplicate_receipt": true,
+      "page_preview": true,
+      "invalid_pdf_job_failed": true,
+      "running_cancel": true,
+      "retry": true,
+      "partial_failure_download_and_appendix": true,
+      "history_settings_and_download_survive_restart": true
+    },
+    "browser": {
+      "actual_upload_and_translation": true,
+      "png_preview": true,
+      "decoded_previews_have_content": true,
+      "reload_recovery": true,
+      "mobile_no_overflow": true,
+      "javascript_errors": [],
+      "partial_failure_download_and_reload": true,
+      "human_review_draft_error_retry_and_reload": true,
+      "human_review_failed_placement_keeps_original": true,
+      "human_review_original_decision_new_history_and_pdf": true,
+      "server_history_without_browser_storage": true,
+      "history_search_filter_download_reopen": true,
+      "retention_settings_saved_from_ui": true,
+      "nonlocal_plain_http_upload": true,
+      "both_pdf_downloads_without_output_selection": true,
+      "backend_refresh_pending_error_empty_and_recovery": true,
+      "disabled_backend_setup_link_reason_config_and_docker_help": true,
+      "setup_deep_link_reload_and_empty_configuration_recovery": true,
+      "setup_copy_on_plain_http_and_ready_backend_return": true,
+      "upload_preparation_error_visible_and_retryable": true
+    }
+  },
+  "configuration_checks": {
+    "missing_and_malformed_config_guidance": true,
+    "index_invalid_fields_identified": true,
+    "bergamot_missing_model_and_executable_distinguished": true,
+    "sample_textra_credentials_rejected": true,
+    "credentials_and_server_paths_not_exposed": true,
+    "no_network_or_inference_on_capability_check": true,
+    "server_file_changes_reflected_without_app_restart": true
+  }
+}

@@ -227,6 +227,33 @@ def main():
                         page.wait_for_function('!document.querySelector("#backend").disabled')
                         assert page.locator('input[name="output"]').count() == 0
                         page.locator('#pdf-file').set_input_files(str(source))
+                        assert page.locator('#backend option[value="INDEX"]').is_disabled()
+                        page.locator('#backend-setup-links a[href="#settings/INDEX"]').click()
+                        page.locator('#settings-view').wait_for(state='visible')
+                        index_guide = page.locator('.backend-setup-card[data-backend="INDEX"]')
+                        assert index_guide.get_attribute('open') is not None
+                        page.wait_for_function("!document.querySelector('#setup-refresh').disabled")
+                        assert '設定がありません' in index_guide.locator('.setup-reason').inner_text()
+                        assert 'INDEX.BASE_URL' in index_guide.inner_text()
+                        index_config = index_guide.locator('textarea').first.input_value()
+                        assert 'BASE_URL:' in index_config and 'MODEL:' in index_config
+                        index_guide.get_by_role('button', name='Index 2B：NERの設定例をコピー').click()
+                        page.wait_for_function("[...document.querySelectorAll('.setup-snippet [role=status]')].some(node => /コピーしました|選択しました/.test(node.textContent))")
+                        assert index_guide.locator('textarea').first.input_value() == index_config
+                        index_guide.locator('.setup-docker > summary').click()
+                        assert 'host.docker.internal' in index_guide.inner_text()
+                        assert index_guide.get_by_role('button', name='この方式で翻訳する').is_hidden()
+                        page.set_viewport_size({'width': 390, 'height': 844})
+                        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                        page.screenshot(path=str(output / 'index-setup-mobile.png'), full_page=True)
+                        page.set_viewport_size({'width': 1280, 'height': 960})
+                        bergamot_guide = page.locator('.backend-setup-card[data-backend="BERGAMOT"]')
+                        bergamot_guide.locator(':scope > summary').click()
+                        assert '設定済み・動作未確認' in bergamot_guide.inner_text()
+                        bergamot_guide.get_by_role('button', name='この方式で翻訳する').click()
+                        page.locator('#translate-view').wait_for(state='visible')
+                        assert page.locator('#backend').input_value() == 'BERGAMOT'
+                        assert 'sample.pdf' in page.locator('#file-name').inner_text()
                         checking_states = []
                         def fail_backend_check(route):
                             checking_states.append(page.evaluate('''({
@@ -258,9 +285,23 @@ def main():
                         page.locator('#setup-message').wait_for(state='visible')
                         assert page.locator('#start-button').is_disabled()
                         assert '設定済みの翻訳方式はありません' in page.locator('#backend-status').inner_text()
+                        page.locator('#backend-setup-links a[href="#settings/INDEX"]').click()
+                        page.locator('#settings-view').wait_for(state='visible')
+                        page.wait_for_function("!document.querySelector('#setup-refresh').disabled")
+                        assert index_guide.get_attribute('open') is not None
+                        page.reload()
+                        page.locator('.backend-setup-card[data-backend="INDEX"][open]').wait_for(state='visible')
+                        page.wait_for_function("!document.querySelector('#setup-refresh').disabled")
+                        assert page.locator('#settings-view').is_visible()
+                        assert '設定済みの翻訳方式はありません' in page.locator('#setup-status').inner_text()
+                        page.screenshot(path=str(output / 'backend-setup-empty.png'), full_page=True)
                         page.unroute('**/api/capabilities', empty_backend_check)
-
-                        page.locator('#refresh-settings').click()
+                        page.locator('#setup-refresh').click()
+                        page.wait_for_function("document.querySelector('#setup-status').textContent.includes('設定済み：')")
+                        bergamot_guide.locator(':scope > summary').click()
+                        bergamot_guide.get_by_role('button', name='この方式で翻訳する').click()
+                        page.locator('#translate-view').wait_for(state='visible')
+                        page.locator('#pdf-file').set_input_files(str(source))
                         page.wait_for_function('document.querySelector("#backend-status").textContent.includes("設定済み：")')
                         assert 'Firefox / Bergamot' in page.locator('#backend-status').inner_text()
                         assert page.locator('#backend').input_value() == 'BERGAMOT'
@@ -467,6 +508,9 @@ def main():
                         report['browser']['nonlocal_plain_http_upload'] = True
                         report['browser']['both_pdf_downloads_without_output_selection'] = True
                         report['browser']['backend_refresh_pending_error_empty_and_recovery'] = True
+                        report['browser']['disabled_backend_setup_link_reason_config_and_docker_help'] = True
+                        report['browser']['setup_deep_link_reload_and_empty_configuration_recovery'] = True
+                        report['browser']['setup_copy_on_plain_http_and_ready_backend_return'] = True
                         report['browser']['upload_preparation_error_visible_and_retryable'] = True
                         report['auth']['browser_login_error_and_success'] = True
                         report['auth']['login_preserves_history_destination'] = True

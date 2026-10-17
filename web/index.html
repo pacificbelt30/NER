@@ -124,6 +124,8 @@
                   ローカル翻訳とオンライン翻訳を選べます。
                 </p>
                 <p id="backend-status" class="field-note" role="status" aria-live="polite" aria-atomic="true"></p>
+                <a class="text-button" id="backend-setup-link" href="#settings">翻訳方式の設定・準備手順を確認 →</a>
+                <ul id="backend-setup-links" class="backend-setup-links" aria-label="未設定の翻訳方式の準備手順" hidden></ul>
               </div>
             </div>
             <p class="field-note">翻訳後に、訳文PDFと原文との比較用PDFをそれぞれダウンロードできます。</p>
@@ -409,10 +411,24 @@
               設定
             </h1>
             <p class="intro-copy">
-              翻訳したPDFの保存方法を設定できます。
+              翻訳方式の準備手順と設定状況の確認、PDFの保存期間の設定ができます。
             </p>
           </div>
         </div>
+        <section class="settings-card" aria-labelledby="backend-setup-title">
+          <div class="section-heading">
+            <h2 id="backend-setup-title">翻訳方式の準備</h2>
+            <button class="secondary-button" id="setup-refresh" type="button">翻訳方式の設定を再確認</button>
+          </div>
+          <p>使いたい方式を開くと、必要なもの・準備手順・設定例を確認できます。</p>
+          <p class="field-note">翻訳エンジンの設定は、NERを動かしているサーバーの <code>config.yml</code>（<code>NER_CONFIG_PATH</code> 指定時はそのファイル）を編集します。この画面は手順の案内と設定状況の確認です。</p>
+          <p class="field-note">設定例は既存の同名セクションを置き換えて使ってください。既定の方式も変える場合は <code>PRIORITY</code> を変更します。通常は保存後の再確認で反映します。Dockerで設定ファイルの差し替え・マウント変更をした場合はコンテナも再起動してください。</p>
+          <p id="config-file-status" class="field-note"></p>
+          <p id="setup-status" class="field-note" role="status" aria-live="polite" aria-atomic="true"></p>
+          <p class="field-note">「設定済み」は設定の形式を確認した状態です。接続先の稼働・認証・モデル推論は、実際に翻訳するまで未確認です。</p>
+          <div id="backend-setup-list"></div>
+          <a class="text-button" href="#translate">翻訳画面へ戻る →</a>
+        </section>
         <form id="settings-form" class="settings-card">
           <h2>
             翻訳履歴の保存期間

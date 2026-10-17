@@ -4,6 +4,7 @@ import { createPreview } from "./preview.js";
 import { createReview } from "./review.js";
 import { createHistory } from "./history.js";
 import { createSettings } from "./settings.js";
+import { createBackendSetup } from "./backend-setup.js";
 import { initializeAuth, loginRequired } from "./auth.js";
 const STORAGE = "ner:last-job:v1";
 const state = {
@@ -36,10 +37,16 @@ const history = createHistory(async id => {
   $("status-card").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 const settings = createSettings();
+const backendSetup = createBackendSetup(() => void loadCapabilities(), id => {
+  if (state.busy || state.checkingCapabilities || !state.capabilities?.backends.find(b => b.id === id)?.configured) return;
+  $("backend").value = id;
+  backendNote();
+  location.hash = "translate";
+});
 
 function showView() {
-  const view = ["history", "settings"].includes(location.hash.slice(1))
-    ? location.hash.slice(1) : "translate";
+  const [route, backendId] = location.hash.slice(1).split("/");
+  const view = ["history", "settings"].includes(route) ? route : "translate";
   for (const name of ["translate", "history", "settings"]) {
     $(`${name}-view`).hidden = name !== view;
     if (name === view) $(`nav-${name}`).setAttribute("aria-current", "page");
@@ -47,7 +54,11 @@ function showView() {
   }
   document.title = `${view === "history" ? "翻訳履歴" : view === "settings" ? "設定" : "PDF翻訳"} — NER`;
   if (view === "history") void history.load();
-  if (view === "settings") void settings.load();
+  if (view === "settings") {
+    void settings.load();
+    backendSetup.focus(backendId);
+    void loadCapabilities();
+  }
 }
 window.addEventListener("hashchange", showView);
 
@@ -92,15 +103,22 @@ function controls(busy) {
   $("remove-file").disabled = busy;
   $("new-file-button").disabled = busy;
   $("refresh-settings").disabled = busy || state.checkingCapabilities;
+  backendSetup.setBusy(busy, state.checkingCapabilities);
 }
 
 function backendNote() {
   const backend = state.capabilities?.backends.find(
     (b) => b.id === $("backend").value,
   );
-  $("backend-note").textContent = backend?.local
-    ? "本文を外部の翻訳サービスへ送らず、サーバー上で翻訳します。"
-    : "本文を外部の翻訳サービスへ送信して翻訳します。";
+  $("backend-note").textContent = !backend ? "使いたい方式の準備手順を下のリンクから確認できます。" :
+    backend.id === "INDEX" ? "本文を設定したIndexモデルサーバーへ送信して翻訳します。" :
+      backend.local ? "NERサーバー上のBergamotで翻訳します。" : "本文を外部の翻訳サービスへ送信して翻訳します。";
+}
+
+function backendStatus(message, error = false) {
+  $("backend-status").textContent = message;
+  $("backend-status").classList.toggle("is-error", error);
+  backendSetup.status(message, error);
 }
 
 function selectJobBackend(job) {
@@ -114,19 +132,20 @@ async function loadCapabilities() {
   state.checkingCapabilities = true;
   $("refresh-settings").textContent = "確認しています…";
   $("refresh-settings").setAttribute("aria-busy", "true");
-  $("backend-status").textContent = "サーバーの翻訳設定を確認しています…";
-  $("backend-status").classList.remove("is-error");
+  backendStatus("サーバーの翻訳設定を確認しています…");
   controls(state.busy);
   try {
     const cap = await request("/api/capabilities");
     const previous = $("backend").value;
     state.capabilities = cap;
+    backendSetup.render(cap);
     $("backend").replaceChildren(
       ...cap.backends.map((backend) => {
         const option = document.createElement("option");
         option.value = backend.id;
         option.disabled = !backend.configured;
-        option.textContent = `${backend.label} · ${backend.local ? "ローカル" : "オンライン"}${backend.configured ? "" : "（準備が必要）"}`;
+        const status = backend.setup?.code === "MISSING_CONFIGURATION" || backend.setup?.code === "CONFIGURATION_UNREADABLE" ? "未設定" : "設定要確認";
+        option.textContent = `${backend.label} · ${backend.local ? "ローカル" : "オンライン"}${backend.configured ? "" : `（${status}）`}`;
         return option;
       }),
     );
@@ -137,19 +156,19 @@ async function loadCapabilities() {
       ) || "";
     $("setup-message").hidden = available.length > 0;
     $("setup-message").textContent =
-      "設定済みの翻訳方式がありません。サーバーの翻訳設定を確認してから「設定を再確認」を押してください。";
+      "設定済みの翻訳方式がありません。上の「設定・準備手順」から必要な準備を確認してください。";
     $("file-rule").textContent = `PDF · 最大${size(cap.max_upload_bytes)}`;
     backendNote();
     const labels = cap.backends.filter(backend => backend.configured).map(backend => backend.label);
     const checkedAt = new Date().toLocaleTimeString("ja-JP");
-    $("backend-status").textContent = labels.length
+    backendStatus(labels.length
       ? `${checkedAt} 確認済み · 設定済み：${labels.join("、")}`
-      : `${checkedAt} 確認済み · 設定済みの翻訳方式はありません。`;
+      : `${checkedAt} 確認済み · 設定済みの翻訳方式はありません。`);
   } catch (error) {
     state.capabilities = null;
+    backendSetup.invalidate();
     $("setup-message").hidden = true;
-    $("backend-status").textContent = `設定を確認できませんでした。${error.message}「設定を再確認」から再試行できます。`;
-    $("backend-status").classList.add("is-error");
+    backendStatus(`設定を確認できませんでした。${error.message}「設定を再確認」から再試行できます。`, true);
   } finally {
     state.checkingCapabilities = false;
     $("refresh-settings").textContent = "翻訳方式の設定を再確認";
@@ -507,7 +526,7 @@ async function restore(saved) {
     return;
   }
   showView();
-  if (location.hash !== "#settings") void settings.load();
+  if (location.hash.split("/")[0] !== "#settings") void settings.load();
   await loadCapabilities();
   const saved = recalled();
   if (saved?.id || saved?.key) await restore(saved);
